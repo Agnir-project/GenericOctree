@@ -1,14 +1,18 @@
+extern crate serde;
+
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::fmt::Debug;
 use std::ops::{Shr, Shl, BitOr};
+
+use serde::{Serialize, Deserialize};
 
 pub trait Subdivisable {
 
     fn where_to_place(&self, rhs: &Self) -> u8;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct OctreeNode<L, D: Subdivisable> {
     pub loc_code: L,
     pub data: D,
@@ -28,7 +32,7 @@ impl<L, D: Subdivisable> OctreeNode<L, D> {
     
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Octree<L: Eq + Hash, D: Subdivisable> {
     content: HashMap<L, OctreeNode<L, D>>
 }
