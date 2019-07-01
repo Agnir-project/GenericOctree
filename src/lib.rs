@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 extern crate serde;
 
 use std::collections::HashMap;
@@ -7,7 +8,9 @@ use std::ops::{Shr, Shl, BitOr};
 
 use serde::{Serialize, Deserialize};
 
-pub trait Subdivisable {
+pub trait LocCode = Eq + Hash + Copy + Shr + Shl + BitOr + Debug + From<u8> + From<<Self as Shr>::Output> + From<<Self as Shl>::Output> + From<<Self as BitOr>::Output>;
+
+pub trait Subdivisable: Copy {
 
     fn where_to_place(&self, rhs: &Self) -> u8;
 }
@@ -19,9 +22,8 @@ pub struct OctreeNode<L, D: Subdivisable> {
     pub childs: u8
 }
 
-impl<L, D: Subdivisable> OctreeNode<L, D> {
+impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
     
-    #[warn(dead_code)]
     pub fn new(data: D, loc_code: L) -> Self {
         Self {
             data,
@@ -38,8 +40,8 @@ pub struct Octree<L: Eq + Hash, D: Subdivisable> {
 }
 
 impl<L, D> Octree<L, D>
-    where L: Hash + Eq + Copy + Shr + Shl + From<u8> + From<<L as Shr>::Output> + From<<L as Shl>::Output> + BitOr + From<<L as BitOr>::Output> + Debug,
-          D: Subdivisable + Copy
+    where L: LocCode,
+          D: Subdivisable
 {
     /// Create a new Octree from an entry. It's necessary to initialize
     /// it with a entry because the tree lay on the first entry.
