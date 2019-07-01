@@ -8,7 +8,7 @@ use std::ops::{BitOr, Shl, Shr};
 
 use serde::{Deserialize, Serialize};
 
-trait LocCode = Eq
+pub trait LocCode = Eq
     + Hash
     + Copy
     + Shr
