@@ -4,7 +4,8 @@ extern crate serde;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{BitOr, Shl, Shr};
+use std::ops::{BitOr, Shl, Shr, BitAnd};
+use std::convert::TryInto;
 
 use serde::{Deserialize, Serialize};
 
@@ -15,8 +16,10 @@ pub trait LocCode = Eq
     + Shr<Output = Self>
     + Shl<Output = Self>
     + BitOr<Output = Self>
+    + BitAnd<Output = Self>
     + From<u8>
-    + From<Self>;
+    + From<Self>
+    + TryInto<u8>;
 
 pub enum ErrorKind {
     CannotPlace(u8),
@@ -24,7 +27,7 @@ pub enum ErrorKind {
     BelowThresold(usize, usize),
 }
 
-pub trait Subdivisable: Copy {
+pub trait Subdivisable: Copy + Debug {
     type CenterType;
 
     fn get_center(&self) -> Self::CenterType;
@@ -49,6 +52,26 @@ impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
             data,
             loc_code,
             childs: 0,
+        }
+    }
+
+    pub fn add_child(&mut self, child: L) {
+        let value: u8;
+        unsafe {
+            let ptr = std::mem::transmute::<&L, *const u8>(&child);
+            ptr.offset(std::mem::size_of::<L>() as isize);
+            value = *ptr;
+        }
+        match value {
+            0 => self.childs |= 0b00000001,
+            1 => self.childs |= 0b00000010,
+            2 => self.childs |= 0b00000100,
+            3 => self.childs |= 0b00001000,
+            4 => self.childs |= 0b00010000,
+            5 => self.childs |= 0b00100000,
+            6 => self.childs |= 0b01000000,
+            7 => self.childs |= 0b10000000,
+            _ => ()
         }
     }
 }
@@ -85,9 +108,9 @@ where
         self.content.insert(node.loc_code, node);
     }
 
-    pub fn get_root(&self, node: OctreeNode<L, D>) -> Option<&OctreeNode<L, D>> {
+    pub fn get_mut_root(&mut self, node: &OctreeNode<L, D>) -> Option<&mut OctreeNode<L, D>> {
         let new_loc_code = L::from(node.loc_code >> L::from(3));
-        self.content.get(&new_loc_code)
+        self.content.get_mut(&new_loc_code)
     }
 
     fn check_subdivise(
@@ -142,10 +165,11 @@ where
                         octree_node,
                     )?);
                 }
-                break Ok(());
             } else {
-                self.content
-                    .insert(loc_code, OctreeNode::new(entry, loc_code));
+                let node = OctreeNode::new(entry, loc_code);
+                let root_node = self.get_mut_root(&node).unwrap();
+                root_node.add_child(loc_code & L::from(0x7));
+                self.content.insert(loc_code, node);
                 break Ok(());
             }
         }
