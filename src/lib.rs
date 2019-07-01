@@ -11,14 +11,12 @@ use serde::{Deserialize, Serialize};
 pub trait LocCode = Eq
     + Hash
     + Copy
-    + Shr
-    + Shl
-    + BitOr
     + Debug
+    + Shr<Output = Self>
+    + Shl<Output = Self>
+    + BitOr<Output = Self>
     + From<u8>
-    + From<<Self as Shr>::Output>
-    + From<<Self as Shl>::Output>
-    + From<<Self as BitOr>::Output>;
+    + From<Self>;
 
 pub enum ErrorKind {
     CannotPlace(u8),
@@ -92,44 +90,85 @@ where
         self.content.get(&new_loc_code)
     }
 
-    pub fn place_data(&mut self, data: D) -> Result<(), ErrorKind> {
-        let mut datas = vec![data];
-        let mut loc_codes = vec![L::from(1)];
-        {
-            let root = self.content.get(&L::from(1)).unwrap();
-            if !data.fit_in(&root.data) {
-                return Err(ErrorKind::OutsideTree);
-            }
-        };
-        'data_loop: loop {
-            if datas.len() == 0 {
+    fn check_subdivise(
+        loc_codes: &mut Vec<L>,
+        datas: &mut Vec<D>,
+        divided_datas: &Vec<D>,
+        loc_code: L,
+    ) -> bool {
+        let vec_len = divided_datas.len();
+
+        if vec_len > 1 {
+            datas.extend(divided_datas);
+            loc_codes.extend(vec![loc_code; vec_len]);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn compute_loc(
+        divided_datas: &mut Vec<D>,
+        loc_code: L,
+        octree_node: &OctreeNode<L, D>,
+    ) -> Result<L, ErrorKind> {
+        let entry = divided_datas.pop().unwrap();
+        let place = entry.where_to_place(&octree_node.data);
+
+        if place > 8 {
+            Err(ErrorKind::CannotPlace(place))
+        } else {
+            Ok(L::from(L::from(loc_code << L::from(3)) | L::from(place)))
+        }
+    }
+
+    /// Iterate through datas, add to input vector subdivisable data
+    fn insert_subdivise(
+        &mut self,
+        mut loc_codes: &mut Vec<L>,
+        mut datas: &mut Vec<D>,
+        entry: D,
+    ) -> Result<(), ErrorKind> {
+        loop {
+            let loc_code = loc_codes.pop().unwrap();
+
+            if let Some(octree_node) = self.content.get(&loc_code) {
+                let mut divided_datas = entry.divide(&octree_node.data);
+
+                if !Self::check_subdivise(&mut loc_codes, &mut datas, &divided_datas, loc_code) {
+                    loc_codes.push(Self::compute_loc(
+                        &mut divided_datas,
+                        loc_code,
+                        octree_node,
+                    )?);
+                }
+                break Ok(());
+            } else {
+                self.content
+                    .insert(loc_code, OctreeNode::new(entry, loc_code));
                 break Ok(());
             }
-            let actual_data = datas.pop().unwrap();
-            'node_loop: loop {
-                let loc_code = loc_codes.pop().unwrap();
-                let node = self.content.get(&loc_code);
-                if let Some(octree_node) = node {
-                    let mut divided_datas = actual_data.divide(&octree_node.data);
-                    let vec_len = divided_datas.len();
-                    if vec_len > 1 {
-                        datas.extend(divided_datas);
-                        loc_codes.extend(vec![loc_code; vec_len]);
-                        continue 'data_loop;
-                    }
-                    let actual_data = divided_datas.pop().unwrap();
-                    let place = actual_data.where_to_place(&octree_node.data);
-                    if place > 8 {
-                        break 'data_loop Err(ErrorKind::CannotPlace(place));
-                    }
-                    loc_codes.push(L::from(L::from(loc_code << L::from(3)) | L::from(place)));
-                    continue 'node_loop;
-                } else {
-                    self.content
-                        .insert(loc_code, OctreeNode::new(actual_data, loc_code));
-                    continue 'data_loop;
-                }
-            }
         }
+    }
+
+    fn is_insertable(&self, data: &D) -> Result<(), ErrorKind> {
+        let root = self.content.get(&L::from(1)).unwrap();
+
+        if !data.fit_in(&root.data) {
+            Err(ErrorKind::OutsideTree)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn place_data(&mut self, data: D) -> Result<(), ErrorKind> {
+        self.is_insertable(&data)?;
+        let mut datas = vec![data];
+        let mut loc_codes = vec![L::from(1)];
+
+        while let Some(entry) = datas.pop() {
+            self.insert_subdivise(&mut loc_codes, &mut datas, entry)?
+        }
+        Ok(())
     }
 }
