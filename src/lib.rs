@@ -10,9 +10,19 @@ use serde::{Serialize, Deserialize};
 
 pub trait LocCode = Eq + Hash + Copy + Shr + Shl + BitOr + Debug + From<u8> + From<<Self as Shr>::Output> + From<<Self as Shl>::Output> + From<<Self as BitOr>::Output>;
 
+pub enum ErrorKind {
+    CannotPlace(u8),
+    OutsideTree,
+    BelowThresold(usize, usize)
+}
+
+
 pub trait Subdivisable: Copy {
 
     fn where_to_place(&self, rhs: &Self) -> u8;
+
+    fn contained_in(&self, rhs: &Self) -> bool;
+
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -74,16 +84,25 @@ impl<L, D> Octree<L, D>
         self.content.get(&new_loc_code)
     }
 
-    pub fn place_data(&mut self, data: D) {
+    pub fn place_data(&mut self, data: D) -> Result<(), ErrorKind> {
         let mut loc_code = L::from(1);
+        {
+            let root = self.content.get(&loc_code).unwrap();
+            if !data.contained_in(&root.data) {
+                return Err(ErrorKind::OutsideTree)
+            }
+        };
         loop {
             let node = self.content.get(&loc_code);
             if let Some(octree_node) = node {
                 let place = data.where_to_place(&octree_node.data);
+                if place > 8 {
+                    break Err(ErrorKind::CannotPlace(place))
+                }
                 loc_code = L::from(L::from(loc_code << L::from(3)) | L::from(place));
             } else {
                 self.content.insert(loc_code, OctreeNode::new(data, loc_code));
-                break
+                break Ok(())
             }
         }
     }
