@@ -19,9 +19,15 @@ pub enum ErrorKind {
 
 pub trait Subdivisable: Copy {
 
+    type CenterType;
+
+    fn get_center(&self) -> Self::CenterType;
+
     fn where_to_place(&self, rhs: &Self) -> u8;
 
-    fn contained_in(&self, rhs: &Self) -> bool;
+    fn fit_in(&self, rhs: &Self) -> bool;
+
+    fn divide(self, rhs: &Self) -> Vec<Self>;
 
 }
 
@@ -85,24 +91,41 @@ impl<L, D> Octree<L, D>
     }
 
     pub fn place_data(&mut self, data: D) -> Result<(), ErrorKind> {
-        let mut loc_code = L::from(1);
+        let mut datas = vec![data];
+        let mut loc_codes = vec![L::from(1)];
         {
-            let root = self.content.get(&loc_code).unwrap();
-            if !data.contained_in(&root.data) {
+            let root = self.content.get(&L::from(1)).unwrap();
+            if !data.fit_in(&root.data) {
                 return Err(ErrorKind::OutsideTree)
             }
         };
-        loop {
-            let node = self.content.get(&loc_code);
-            if let Some(octree_node) = node {
-                let place = data.where_to_place(&octree_node.data);
-                if place > 8 {
-                    break Err(ErrorKind::CannotPlace(place))
-                }
-                loc_code = L::from(L::from(loc_code << L::from(3)) | L::from(place));
-            } else {
-                self.content.insert(loc_code, OctreeNode::new(data, loc_code));
+        'data_loop: loop {
+            if datas.len() == 0 {
                 break Ok(())
+            }
+            let actual_data = datas.pop().unwrap();
+            'node_loop: loop {
+                let loc_code = loc_codes.pop().unwrap();
+                let node = self.content.get(&loc_code);
+                if let Some(octree_node) = node {
+                    let mut divided_datas = actual_data.divide(&octree_node.data);
+                    let vec_len = divided_datas.len();
+                    if vec_len > 1 {
+                        datas.extend(divided_datas);
+                        loc_codes.extend(vec![loc_code; vec_len]);
+                        continue 'data_loop;
+                    }
+                    let actual_data = divided_datas.pop().unwrap();
+                    let place = actual_data.where_to_place(&octree_node.data);
+                    if place > 8 {
+                        break 'data_loop Err(ErrorKind::CannotPlace(place))
+                    }
+                    loc_codes.push(L::from(L::from(loc_code << L::from(3)) | L::from(place)));
+                    continue 'node_loop;
+                } else {
+                    self.content.insert(loc_code, OctreeNode::new(actual_data, loc_code));
+                    continue 'data_loop;
+                }
             }
         }
     }
