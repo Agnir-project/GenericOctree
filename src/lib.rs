@@ -2,23 +2,31 @@
 extern crate serde;
 
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::fmt::Debug;
-use std::ops::{Shr, Shl, BitOr};
+use std::hash::Hash;
+use std::ops::{BitOr, Shl, Shr};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-pub trait LocCode = Eq + Hash + Copy + Shr + Shl + BitOr + Debug + From<u8> + From<<Self as Shr>::Output> + From<<Self as Shl>::Output> + From<<Self as BitOr>::Output>;
+trait LocCode = Eq
+    + Hash
+    + Copy
+    + Shr
+    + Shl
+    + BitOr
+    + Debug
+    + From<u8>
+    + From<<Self as Shr>::Output>
+    + From<<Self as Shl>::Output>
+    + From<<Self as BitOr>::Output>;
 
 pub enum ErrorKind {
     CannotPlace(u8),
     OutsideTree,
-    BelowThresold(usize, usize)
+    BelowThresold(usize, usize),
 }
 
-
 pub trait Subdivisable: Copy {
-
     type CenterType;
 
     fn get_center(&self) -> Self::CenterType;
@@ -28,53 +36,47 @@ pub trait Subdivisable: Copy {
     fn fit_in(&self, rhs: &Self) -> bool;
 
     fn divide(self, rhs: &Self) -> Vec<Self>;
-
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OctreeNode<L, D: Subdivisable> {
     pub loc_code: L,
     pub data: D,
-    pub childs: u8
+    pub childs: u8,
 }
 
 impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
-    
     pub fn new(data: D, loc_code: L) -> Self {
         Self {
             data,
             loc_code,
-            childs: 0
+            childs: 0,
         }
     }
-    
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Octree<L: Eq + Hash, D: Subdivisable> {
-    content: HashMap<L, OctreeNode<L, D>>
+    content: HashMap<L, OctreeNode<L, D>>,
 }
 
 impl<L, D> Octree<L, D>
-    where L: LocCode,
-          D: Subdivisable
+where
+    L: LocCode,
+    D: Subdivisable,
 {
     /// Create a new Octree from an entry. It's necessary to initialize
     /// it with a entry because the tree lay on the first entry.
     pub fn new(data: D) -> Self {
         let mut content = HashMap::default();
         content.insert(L::from(1), OctreeNode::new(data, L::from(1)));
-        Self {
-            content
-        }
+        Self { content }
     }
 
     pub fn with_capacity(size: usize, data: D) -> Self {
         let mut content = HashMap::with_capacity(size);
         content.insert(L::from(1), OctreeNode::new(data, L::from(1)));
-        Self {
-            content
-        }
+        Self { content }
     }
 
     pub fn lookup(&self, loc_code: &L) -> Option<&OctreeNode<L, D>> {
@@ -96,12 +98,12 @@ impl<L, D> Octree<L, D>
         {
             let root = self.content.get(&L::from(1)).unwrap();
             if !data.fit_in(&root.data) {
-                return Err(ErrorKind::OutsideTree)
+                return Err(ErrorKind::OutsideTree);
             }
         };
         'data_loop: loop {
             if datas.len() == 0 {
-                break Ok(())
+                break Ok(());
             }
             let actual_data = datas.pop().unwrap();
             'node_loop: loop {
@@ -118,12 +120,13 @@ impl<L, D> Octree<L, D>
                     let actual_data = divided_datas.pop().unwrap();
                     let place = actual_data.where_to_place(&octree_node.data);
                     if place > 8 {
-                        break 'data_loop Err(ErrorKind::CannotPlace(place))
+                        break 'data_loop Err(ErrorKind::CannotPlace(place));
                     }
                     loc_codes.push(L::from(L::from(loc_code << L::from(3)) | L::from(place)));
                     continue 'node_loop;
                 } else {
-                    self.content.insert(loc_code, OctreeNode::new(actual_data, loc_code));
+                    self.content
+                        .insert(loc_code, OctreeNode::new(actual_data, loc_code));
                     continue 'data_loop;
                 }
             }
