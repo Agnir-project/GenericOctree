@@ -2,13 +2,6 @@ stages:
   - build
   - publish
 
-rust-latest:
-  stage: build
-  image: rust:latest
-  script:
-    - cargo build --verbose
-    - cargo test --verbose
-
 rust-nightly:
   stage: build
   image: rustlang/rust:nightly
