@@ -12,7 +12,7 @@ rust-nightly:
 
 publish:
   stage: publish
-  image: rust:latest
+  image: rustlang/rust:nightly
   script:
     - cargo login $CRATES_IO_TOKEN
     - cargo package
