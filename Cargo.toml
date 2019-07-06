@@ -3,6 +3,7 @@ name = "generic-octree"
 version = "0.1.0"
 authors = ["Thomas \"nwmqpa\" Nicollet <thomas.nicolleŧ@epitech.eu>"]
 edition = "2018"
+description = "Simple generic implementation of a linear Octree"
 license = "Apache-2.0"
 readme = "README.md"
 
