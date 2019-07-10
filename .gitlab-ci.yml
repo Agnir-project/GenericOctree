@@ -23,14 +23,12 @@ rust-stable:
     - cargo build --verbose
     - cargo test --verbose
 
-
 rust-stable-serde:
   stage: build
   image: rustlang/rust:latest
   script:
     - cargo build --features serialize --verbose
     - cargo test --features serialize --verbose
-
 
 publish:
   stage: publish
@@ -39,5 +37,5 @@ publish:
     - cargo login $CRATES_IO_TOKEN
     - cargo package
     - cargo publish
-  allow-failure: true
+  allow_failure: true
 
