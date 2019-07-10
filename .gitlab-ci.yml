@@ -18,14 +18,14 @@ rust-nightly-serde:
 
 rust-stable:
   stage: build
-  image: rustlang/rust
+  image: rust
   script:
     - cargo build --verbose
     - cargo test --verbose
 
 rust-stable-serde:
   stage: build
-  image: rustlang/rust
+  image: rust
   script:
     - cargo build --features serialize --verbose
     - cargo test --features serialize --verbose
