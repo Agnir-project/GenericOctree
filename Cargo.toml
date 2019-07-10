@@ -1,7 +1,10 @@
 [package]
 name = "generic-octree"
 version = "0.1.0"
-authors = ["Thomas \"nwmqpa\" Nicollet <thomas.nicolleŧ@epitech.eu>"]
+authors = [
+            "Thomas \"nwmqpa\" Nicollet <thomas.nicolleŧ@epitech.eu>",
+            "Alexandre \"Afourcat\" Fourcat <alexandre.fourcat@epitech.eu>",
+          ]
 edition = "2018"
 description = "Simple generic implementation of a linear Octree"
 license = "Apache-2.0"
