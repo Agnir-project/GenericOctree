@@ -12,7 +12,7 @@ use std::ops::{BitAnd, BitOr, Shl, Shr};
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-trait LocCode = Eq
+pub trait LocCode = Eq
     + Hash
     + Copy
     + Debug
