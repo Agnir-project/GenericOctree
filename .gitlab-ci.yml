@@ -8,7 +8,29 @@ rust-nightly:
   script:
     - cargo build --verbose
     - cargo test --verbose
-  allow_failure: true
+
+rust-nightly-serde:
+  stage: build
+  image: rustlang/rust:nightly
+  script:
+    - cargo build --features serialize --verbose
+    - cargo test --features serialize --verbose
+
+rust-stable:
+  stage: build
+  image: rustlang/rust:stable
+  script:
+    - cargo build --verbose
+    - cargo test --verbose
+
+
+rust-stable-serde:
+  stage: build
+  image: rustlang/rust:stable
+  script:
+    - cargo build --features serialize --verbose
+    - cargo test --features serialize --verbose
+
 
 publish:
   stage: publish
