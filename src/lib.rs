@@ -1,18 +1,18 @@
 #![feature(trait_alias)]
 
-#[cfg(feature="serialize")]
+#[cfg(feature = "serialize")]
 extern crate serde;
 
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{BitOr, Shl, Shr, BitAnd};
-use std::convert::TryInto;
+use std::ops::{BitAnd, BitOr, Shl, Shr};
 
-#[cfg(feature="serialize")]
+#[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
-pub trait LocCode = Eq
+trait LocCode = Eq
     + Hash
     + Copy
     + Debug
@@ -53,7 +53,6 @@ pub struct OctreeNode<L, D: Subdivisable> {
 }
 
 impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
-
     /// Create a new Node from it's Data and a LocCode.
     pub fn new(data: D, loc_code: L) -> Self {
         Self {
@@ -80,7 +79,7 @@ impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
             5 => self.childs |= 0b00100000,
             6 => self.childs |= 0b01000000,
             7 => self.childs |= 0b10000000,
-            _ => ()
+            _ => (),
         }
     }
 }
