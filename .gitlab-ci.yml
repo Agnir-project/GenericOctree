@@ -22,6 +22,7 @@ rust-stable:
   script:
     - cargo build --verbose
     - cargo test --verbose
+  allow_failure: true
 
 rust-stable-serde:
   stage: build
@@ -29,6 +30,7 @@ rust-stable-serde:
   script:
     - cargo build --features serialize --verbose
     - cargo test --features serialize --verbose
+  allow_failure: true
 
 publish:
   stage: publish
