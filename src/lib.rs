@@ -1,4 +1,6 @@
 #![feature(trait_alias)]
+
+#[cfg(feature="serialize")]
 extern crate serde;
 
 use std::collections::HashMap;
@@ -7,6 +9,7 @@ use std::hash::Hash;
 use std::ops::{BitOr, Shl, Shr, BitAnd};
 use std::convert::TryInto;
 
+#[cfg(feature="serialize")]
 use serde::{Deserialize, Serialize};
 
 pub trait LocCode = Eq
@@ -21,12 +24,14 @@ pub trait LocCode = Eq
     + From<Self>
     + TryInto<u8>;
 
+/// Octree's error kinds.
 pub enum ErrorKind {
     CannotPlace(u8),
     OutsideTree,
     BelowThresold(usize, usize),
 }
 
+/// A Trait that can be implemented on a struct to allow it to be inside a Node.
 pub trait Subdivisable: Copy + Debug {
     type CenterType;
 
@@ -39,7 +44,8 @@ pub trait Subdivisable: Copy + Debug {
     fn divide(self, rhs: &Self) -> Vec<Self>;
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct OctreeNode<L, D: Subdivisable> {
     pub loc_code: L,
     pub data: D,
@@ -47,6 +53,8 @@ pub struct OctreeNode<L, D: Subdivisable> {
 }
 
 impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
+
+    /// Create a new Node from it's Data and a LocCode.
     pub fn new(data: D, loc_code: L) -> Self {
         Self {
             data,
@@ -55,6 +63,7 @@ impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
         }
     }
 
+    /// Add a child to the actual Node.
     pub fn add_child(&mut self, child: L) {
         let value: u8;
         unsafe {
@@ -76,7 +85,8 @@ impl<L: LocCode, D: Subdivisable> OctreeNode<L, D> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Octree<L: Eq + Hash, D: Subdivisable> {
     content: HashMap<L, OctreeNode<L, D>>,
 }
@@ -94,25 +104,36 @@ where
         Self { content }
     }
 
+    /// Create an Octree with given pre-allocated space.
     pub fn with_capacity(size: usize, data: D) -> Self {
         let mut content = HashMap::with_capacity(size);
         content.insert(L::from(1), OctreeNode::new(data, L::from(1)));
         Self { content }
     }
 
+    /// Return a tree node a node.
     pub fn lookup(&self, loc_code: &L) -> Option<&OctreeNode<L, D>> {
         self.content.get(loc_code)
     }
 
+    /// Insert a tree node.
     pub fn insert(&mut self, node: OctreeNode<L, D>) {
         self.content.insert(node.loc_code, node);
     }
 
+    /// Get a mutable root node.
     pub fn get_mut_root(&mut self, node: &OctreeNode<L, D>) -> Option<&mut OctreeNode<L, D>> {
         let new_loc_code = L::from(node.loc_code >> L::from(3));
         self.content.get_mut(&new_loc_code)
     }
 
+    /// Get a immutable root node.
+    pub fn get_root(&self, node: &OctreeNode<L, D>) -> Option<&OctreeNode<L, D>> {
+        let new_loc_code = L::from(node.loc_code >> L::from(3));
+        self.content.get(&new_loc_code)
+    }
+
+    /// Internal: That check if the tree is Subdivisable at a given point.
     fn check_subdivise(
         loc_codes: &mut Vec<L>,
         datas: &mut Vec<D>,
@@ -130,6 +151,7 @@ where
         }
     }
 
+    /// Internal: Compute a new loc.
     fn compute_loc(
         divided_datas: &mut Vec<D>,
         loc_code: L,
@@ -145,7 +167,7 @@ where
         }
     }
 
-    /// Iterate through datas, add to input vector subdivisable data
+    /// Iterate through datas, add to input vector subdivisable data.
     fn insert_subdivise(
         &mut self,
         mut loc_codes: &mut Vec<L>,
@@ -175,6 +197,7 @@ where
         }
     }
 
+    /// Internal: Check if the data is insertable in the tree.
     fn is_insertable(&self, data: &D) -> Result<(), ErrorKind> {
         let root = self.content.get(&L::from(1)).unwrap();
 
@@ -185,6 +208,7 @@ where
         }
     }
 
+    /// Function to put data in the tree.
     pub fn place_data(&mut self, data: D) -> Result<(), ErrorKind> {
         self.is_insertable(&data)?;
         let mut datas = vec![data];
