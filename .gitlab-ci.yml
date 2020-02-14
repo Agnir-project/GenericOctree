@@ -1,6 +1,22 @@
 stages:
+  - format
+  - clippy
   - build
   - publish
+
+rust-format:
+  stage: format
+  image: rustlang/rust:nightly
+  script:
+    - cargo fmt -- --check
+  allow_failure: true
+
+rust-clippy:
+  stage: clippy
+  image: rustlang/rust:nightly
+  script:
+    - cargo clippy --all-features 
+  allow_failure: true
 
 rust-all-features:
   stage: build
