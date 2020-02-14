@@ -12,6 +12,9 @@ use std::ops::{BitAnd, BitOr, Shl, Shr};
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "dot_vox")]
+mod dot_vox;
+
 pub trait LocCode = Eq
     + Hash
     + Copy
