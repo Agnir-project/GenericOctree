@@ -4,6 +4,8 @@
 // Description:
 // Create a Generic Octree from a dot_vox file.
 
+use dot_vox;
+
 #[cfg(test)]
 mod test {
     #[test]
