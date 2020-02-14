@@ -4,7 +4,7 @@ stages:
 
 rust-all-features:
   stage: build
-  image: rust
+  image: rustlang/rust:nightly
   script:
     - cargo build --verbose --all-features
     - cargo test --verbose --all-features
