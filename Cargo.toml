@@ -14,7 +14,12 @@ readme = "README.md"
 [dependencies]
 serde = { version = "1.0.*", features = ["derive"], optional = true }
 dot_vox = { version = "4.0.0", optional = true}
+bincode = { version = "1.2.1", optional = true}
 
 [features]
 serialize = ["serde"]
+dot_tree = ["serialize", "bincode"]
 vox = ["dot_vox"]
+
+[dev-dependencies]
+color-rs = "*"
