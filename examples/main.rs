@@ -3,10 +3,10 @@ use color::{Rgb};
 
 fn main() {
     let mut tree: Octree<u64, Rgb<u8>> = Octree::new(Rgb::new(0, 0, 0));
-    let data = AABB::new(0.0, 0.0, 0.0, 1.0, 0.5, 0.75).explode(0.5);
+    let data: Vec<AABB<u64>> = AABB::new(0.0, 0.0, 0.0, 1.0, 0.5, 0.75).explode((0.5, 0.5, 0.5));
     println!("{:?}", data.iter().map(|aabb| aabb.fit_in(1)).collect::<Vec<bool>>());
     tree.merge(AABB::new(0.0, 0.0, 0.0, 1.0, 0.5, 0.75), Rgb::new(1, 1, 1));
     println!("{:#?}", tree);
-    println!("{:?}", AABB::new(1.0, 0.5, 0.75, 1.0, 0.5, 1.0).explode(0.5));
-    println!("{:?}", AABB::new(0.0, 0.5, 0.0, 1.0, 1.0, 1.0).explode(0.5));
+    println!("{:?}", AABB::<u64>::new(1.0, 0.5, 0.75, 1.0, 0.5, 1.0).explode((0.5, 0.5, 0.5)));
+    println!("{:?}", AABB::<u64>::new(0.0, 0.5, 0.0, 1.0, 1.0, 1.0).explode((0.5, 0.5, 0.5)));
 }

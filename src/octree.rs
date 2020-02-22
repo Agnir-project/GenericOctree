@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -7,7 +8,7 @@ use std::path::Path;
 
 use crate::node::OctreeNode;
 
-use crate::aabb::AABB;
+use crate::aabb::{Orientation, AABB};
 
 pub trait LocCode = Eq
     + Hash
@@ -76,8 +77,10 @@ where
     }
 
     /// Insert a tree node.
-    pub fn insert(&mut self, node: OctreeNode<L, D>) {
-        self.content.insert(node.loc_code, node);
+    pub fn insert(&mut self, node: OctreeNode<L, D>) -> L {
+        let location = node.loc_code;
+        self.content.insert(location, node);
+        location
     }
 
     /// Get a mutable root node.
@@ -93,17 +96,63 @@ where
     }
 
     /// Merge an AABB into the tree
-    pub fn merge(&mut self, aabb: AABB, data: D) {
-        let blocks = aabb.explode(0.5);
-        let fitting: Vec<OctreeNode<L, D>> = blocks
+    pub fn merge(&mut self, aabb: AABB<L>, data: D) {
+        let codes = self.merge_inner(aabb, data, (0.5, 0.5, 0.5), 1, L::from(1));
+        println!("{:?}", codes);
+    }
+
+    /// Internal function for recursively merging AABB.
+    /// Returns a HashSet containing all the node that are affected by the merging, not all new nodes
+    /// These affected nodes can be scheduled to merge data outside here
+    fn merge_inner(
+        &mut self,
+        aabb: AABB<L>,
+        data: D,
+        center: (f64, f64, f64),
+        depth: u32,
+        loc_code: L,
+    ) -> HashSet<L> {
+        let blocks = aabb.explode(center);
+        let fitting: Vec<AABB<L>> = blocks
             .iter()
-            .filter(|aabb| aabb.fit_in(1))
+            .filter(|aabb| aabb.fit_in(depth))
             .cloned()
-            .map(|elem| OctreeNode::new(data, (L::from(1) << L::from(3)) | (elem.orientation as u8).into()))
             .collect();
-        for block in fitting {
-            self.insert(block);
-        }
-        let subdividables: Vec<AABB> = blocks.into_iter().filter(|aabb| aabb.fit_in(1)).collect();
+        println!("fitting = {:?} for center = {:?}", fitting, center);
+        let fit_codes = fitting
+            .into_iter()
+            .map(|elem| {
+                OctreeNode::new(
+                    data,
+                    (loc_code << L::from(3)) | (elem.orientation as u8).into(),
+                )
+            })
+            .map(|elem| self.insert(elem))
+            .map(|loc_code| loc_code >> L::from(3))
+            .collect();
+        let subdividables: Vec<AABB<L>> = blocks
+            .into_iter()
+            .filter(|aabb| !aabb.fit_in(depth))
+            .collect();
+        println!(
+            "subdivisables = {:?} for center = {:?}",
+            subdividables, center
+        );
+        let subdivisable_codes: HashSet<L> = subdividables
+            .into_iter()
+            .map(|aabb| {
+                let new_loc_code = (loc_code << L::from(3)) | (aabb.orientation as u8).into();
+                let new_center = aabb.orientation.make_new_center(new_loc_code, center);
+                self.merge_inner(
+                    aabb.with_orientation(Orientation::N),
+                    data,
+                    new_center,
+                    depth + 1,
+                    new_loc_code,
+                )
+            })
+            .flatten()
+            .collect();
+        fit_codes
     }
 }

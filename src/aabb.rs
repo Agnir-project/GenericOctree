@@ -1,6 +1,17 @@
 use std::ops::BitOr;
+use crate::LocCode;
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+
 #[derive(Debug, Clone, Copy)]
 pub enum Orientation {
+    LBU,
+    LFU,
+    LFD,
+    RBD,
+    RFD,
+    RFU,
+    RBU,
     N,
     L,
     R,
@@ -10,16 +21,9 @@ pub enum Orientation {
     D,
     LF,
     LB,
-    LFU,
-    LFD,
-    LBU,
     LBD,
     RF,
     RB,
-    RFU,
-    RFD,
-    RBU,
-    RBD,
     FU,
     FD,
     BU,
@@ -28,6 +32,36 @@ pub enum Orientation {
     LD,
     RU,
     RD,
+}
+
+type Center = (f64, f64, f64);
+
+fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32{
+    let mut level = 1;
+    while loc_code != L::from(1) {
+        loc_code = loc_code >> L::from(3);
+        level += 1;
+    }
+    level
+}
+
+impl Orientation {
+
+    pub fn make_new_center<L: LocCode>(self, loc_code: L, center: Center) -> Center {
+        let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(loc_code)) as f64);
+        match self {
+            Self::LBU => (center.0 - offset, center.1 + offset, center.2 - offset),
+            Self::LFU => (center.0 - offset, center.1 + offset, center.2 + offset),
+            Self::LFD => (center.0 - offset, center.1 - offset, center.2 + offset),
+            Self::LBD => (center.0 - offset, center.1 - offset, center.2 - offset),
+            Self::RBD => (center.0 + offset, center.1 - offset, center.2 - offset),
+            Self::RFD => (center.0 + offset, center.1 - offset, center.2 + offset),
+            Self::RFU => (center.0 + offset, center.1 + offset, center.2 + offset),
+            Self::RBU => (center.0 + offset, center.1 + offset, center.2 - offset),
+            _ => center
+        }
+    } 
+
 }
 
 /// TODO: Make this TryInto
@@ -154,13 +188,14 @@ pub enum PlaneAxis {
 pub struct Plane(f64, PlaneAxis);
 
 #[derive(Debug, Clone)]
-pub struct AABB {
+pub struct AABB<L> {
     x1: f64,
     y1: f64,
     z1: f64,
     x2: f64,
     y2: f64,
     z2: f64,
+    parent: Option<L>,
     pub orientation: Orientation,
 }
 
@@ -175,7 +210,7 @@ pub fn max<T: PartialOrd>(a: T, b: T) -> T {
 }
 
 
-impl AABB {
+impl<L: LocCode> AABB<L> {
     pub fn new(x1: f64, y1: f64, z1: f64, x2: f64, y2: f64, z2: f64) -> Self {
         Self {
             x1: min(x1, x2),
@@ -184,6 +219,7 @@ impl AABB {
             x2: max(x2, x1),
             y2: max(y1, y2),
             z2: max(z1, z2),
+            parent: None,
             orientation: Orientation::N,
         }
     }
@@ -204,7 +240,7 @@ impl AABB {
                         Self::new(plane.0, self.y1, self.z1, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::R),
                     ]
-                } else if self.x2 < plane.0  {
+                } else if self.x2 <= plane.0  {
                     vec![self.with_orientation(orientation | Orientation::L)]
                 } else {
                     vec![self.with_orientation(orientation | Orientation::R)]
@@ -218,7 +254,7 @@ impl AABB {
                         Self::new(self.x1, plane.0, self.z1, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::U),
                     ]
-                } else if self.y2 < plane.0  {
+                } else if self.y2 <= plane.0  {
                     vec![self.with_orientation(orientation | Orientation::D)]
                 } else {
                     vec![self.with_orientation(orientation | Orientation::U)]
@@ -228,25 +264,25 @@ impl AABB {
                 if self.z1 < plane.0 && self.z2 > plane.0 {
                      vec![
                         Self::new(self.x1, self.y1, self.z1, self.x2, self.y2, plane.0)
-                            .with_orientation(orientation | Orientation::F),
-                        Self::new(self.x1, self.y1, plane.0, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::B),
+                        Self::new(self.x1, self.y1, plane.0, self.x2, self.y2, self.z2)
+                            .with_orientation(orientation | Orientation::F),
                     ]
-                } else if self.z2 < plane.0  {
-                    vec![self.with_orientation(orientation | Orientation::F)]
-                } else {
+                } else if self.z2 <= plane.0  {
                     vec![self.with_orientation(orientation | Orientation::B)]
+                } else {
+                    vec![self.with_orientation(orientation | Orientation::F)]
                 }
             }
         }
     }
 
-    pub fn explode(self, center: f64) -> Vec<Self> {
-        self.slice(Plane(center, PlaneAxis::X))
+    pub fn explode(self, center: (f64, f64, f64)) -> Vec<Self> {
+        self.slice(Plane(center.0, PlaneAxis::X))
             .into_iter()
-            .map(|aabb| aabb.slice(Plane(center, PlaneAxis::Z)))
+            .map(|aabb| aabb.slice(Plane(center.1, PlaneAxis::Y)))
             .flatten()
-            .map(|aabb| aabb.slice(Plane(center, PlaneAxis::Y)))
+            .map(|aabb| aabb.slice(Plane(center.2, PlaneAxis::Z)))
             .flatten()
             .collect()
     }
