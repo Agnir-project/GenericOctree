@@ -1,13 +1,13 @@
 use std::ops::BitOr;
 use crate::LocCode;
-use lazy_static::lazy_static;
-use std::collections::HashMap;
 
+// TODO: Make u8 not rely on enum position
 #[derive(Debug, Clone, Copy)]
 pub enum Orientation {
     LBU,
     LFU,
     LFD,
+    LBD,
     RBD,
     RFD,
     RFU,
@@ -21,7 +21,6 @@ pub enum Orientation {
     D,
     LF,
     LB,
-    LBD,
     RF,
     RB,
     FU,
@@ -288,9 +287,9 @@ impl<L: LocCode> AABB<L> {
     }
 
     pub fn fit_in(&self, depth: u32) -> bool {
-        let edge_size = (1 as f64) / ((2 as usize).pow(depth) as f64);
-        (self.x1 - self.x2).abs() == edge_size
-            && (self.y1 - self.y2).abs() == edge_size
-            && (self.z1 - self.z2).abs() == edge_size
+        let edge_size = 1_f64 / (2_usize.pow(depth) as f64);
+        ((self.x1 - self.x2).abs() - edge_size).abs() < std::f64::EPSILON
+        &&  ((self.y1 - self.y2).abs() - edge_size).abs() < std::f64::EPSILON
+        &&  ((self.z1 - self.z2).abs() - edge_size).abs() < std::f64::EPSILON
     }
 }

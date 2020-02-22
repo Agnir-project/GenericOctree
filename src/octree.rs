@@ -11,6 +11,7 @@ use crate::node::OctreeNode;
 use crate::aabb::{Orientation, AABB};
 
 pub trait LocCode = Eq
+    + Ord
     + Hash
     + Copy
     + Debug
@@ -38,7 +39,7 @@ pub struct Octree<L: Eq + Hash, D> {
 impl<L, D> Octree<L, D>
 where
     L: LocCode,
-    D: Clone + Copy,
+    D: Clone + Copy + PartialEq + Debug,
 {
     /// Load from voxel octree from files
     pub fn load_from_file<P: AsRef<Path>>(path_ref: P) -> Result<Self, &'static str> {
@@ -46,21 +47,16 @@ where
         match path.extension() {
             Some(x) => match x.to_str() {
                 #[cfg(feature = "dot_tree")]
-                Some(".tree") => {
-                    println!("test");
-                    Err("At least we got there")
-                }
+                Some(".tree") => Err("At least we got there"),
                 _ => Err("Cannot open format"),
             },
             None => Err("No format to open"),
         }
     }
 
-    /// Create a new Octree from an entry. It's necessary to initialize
-    /// it with a entry because the tree lay on the first entry.
-    pub fn new(data: D) -> Self {
-        let mut content = HashMap::default();
-        content.insert(L::from(1), OctreeNode::new(data, L::from(1)));
+    /// Create a new Octree
+    pub fn new() -> Self {
+        let content = HashMap::default();
         Self { content }
     }
 
@@ -83,21 +79,65 @@ where
         location
     }
 
+    pub fn remove_node(&mut self, loc_code: &L) {
+        self.content.remove(loc_code);
+    }
+
     /// Get a mutable root node.
     pub fn get_mut_root(&mut self, node: &OctreeNode<L, D>) -> Option<&mut OctreeNode<L, D>> {
-        let new_loc_code = L::from(node.loc_code >> L::from(3));
+        let new_loc_code = node.loc_code >> L::from(3);
         self.content.get_mut(&new_loc_code)
     }
 
     /// Get a immutable root node.
     pub fn get_root(&self, node: &OctreeNode<L, D>) -> Option<&OctreeNode<L, D>> {
-        let new_loc_code = L::from(node.loc_code >> L::from(3));
+        let new_loc_code = node.loc_code >> L::from(3);
         self.content.get(&new_loc_code)
     }
 
     /// Merge an AABB into the tree
     pub fn merge(&mut self, aabb: AABB<L>, data: D) {
-        let codes = self.merge_inner(aabb, data, (0.5, 0.5, 0.5), 1, L::from(1));
+        let mut codes: Vec<L> = self
+            .merge_inner(aabb, data, (0.5, 0.5, 0.5), 1, L::from(1))
+            .into_iter()
+            .collect();
+        while !codes.is_empty() {
+            codes.sort();
+            codes.reverse();
+            codes = codes
+                .into_iter()
+                .filter_map(|code| self.assemble(code))
+                .filter(|code| code > &L::from(0))
+                .collect::<HashSet<L>>()
+                .into_iter()
+                .collect();
+        }
+    }
+
+    fn assemble(&mut self, code: L) -> Option<L> {
+        let datas = (0_u8..8_u8)
+            .map(|number| (code << L::from(3)) | L::from(number))
+            .filter_map(|loc_code| self.lookup(&loc_code))
+            .map(|node| node.data)
+            .collect::<Vec<D>>();
+        if datas.len() != 8 {
+            None
+        } else {
+            let elem = datas[0];
+            let is_same = datas
+                .into_iter()
+                .fold((true, elem), |acc, elem| (acc.0 && acc.1 == elem, acc.1))
+                .0;
+            if !is_same {
+                None
+            } else {
+                (0_u8..8_u8)
+                    .map(|number| (code << L::from(3)) | L::from(number))
+                    .for_each(|code| self.remove_node(&code));
+                self.insert(OctreeNode::new(elem, code));
+                Some(code >> L::from(3))
+            }
+        }
     }
 
     /// Internal function for recursively merging AABB.
@@ -112,7 +152,7 @@ where
         loc_code: L,
     ) -> HashSet<L> {
         let blocks = aabb.explode(center);
-        let fitting: HashSet<L> = blocks
+        let mut fitting: HashSet<L> = blocks
             .iter()
             .filter(|aabb| aabb.fit_in(depth))
             .cloned()
@@ -141,6 +181,7 @@ where
             })
             .flatten()
             .collect();
+        fitting.extend(subdividables);
         fitting
     }
 }
