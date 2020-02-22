@@ -98,7 +98,6 @@ where
     /// Merge an AABB into the tree
     pub fn merge(&mut self, aabb: AABB<L>, data: D) {
         let codes = self.merge_inner(aabb, data, (0.5, 0.5, 0.5), 1, L::from(1));
-        println!("{:?}", codes);
     }
 
     /// Internal function for recursively merging AABB.
@@ -113,14 +112,10 @@ where
         loc_code: L,
     ) -> HashSet<L> {
         let blocks = aabb.explode(center);
-        let fitting: Vec<AABB<L>> = blocks
+        let fitting: HashSet<L> = blocks
             .iter()
             .filter(|aabb| aabb.fit_in(depth))
             .cloned()
-            .collect();
-        println!("fitting = {:?} for center = {:?}", fitting, center);
-        let fit_codes = fitting
-            .into_iter()
             .map(|elem| {
                 OctreeNode::new(
                     data,
@@ -130,16 +125,9 @@ where
             .map(|elem| self.insert(elem))
             .map(|loc_code| loc_code >> L::from(3))
             .collect();
-        let subdividables: Vec<AABB<L>> = blocks
+        let subdividables: HashSet<L> = blocks
             .into_iter()
             .filter(|aabb| !aabb.fit_in(depth))
-            .collect();
-        println!(
-            "subdivisables = {:?} for center = {:?}",
-            subdividables, center
-        );
-        let subdivisable_codes: HashSet<L> = subdividables
-            .into_iter()
             .map(|aabb| {
                 let new_loc_code = (loc_code << L::from(3)) | (aabb.orientation as u8).into();
                 let new_center = aabb.orientation.make_new_center(new_loc_code, center);
@@ -153,6 +141,6 @@ where
             })
             .flatten()
             .collect();
-        fit_codes
+        fitting
     }
 }
