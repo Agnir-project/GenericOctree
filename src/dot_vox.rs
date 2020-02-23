@@ -11,13 +11,13 @@ use crate::Octree;
 use dot_vox::DotVoxData;
 use std::hash::Hash;
 
-pub(crate) fn vox_to_octrees<L: LocCode>(data: DotVoxData) -> Vec<Octree<L, u32>> {
+pub(crate) fn vox_to_octrees<L: LocCode>(data: DotVoxData, max_depth: u32) -> Vec<Octree<L, u32>> {
     println!("Version of the file: {}.", data.version);
     println!("Palette: {:?}.", data.palette);
     let mut octrees = Vec::with_capacity(1);
 
     for (i, model) in data.models.iter().enumerate() {
-        let mut octree = Octree::new();
+        let mut octree = Octree::new(max_depth);
         println!(
             "Model {} of size: x: {} y: {} z: {}.",
             i, model.size.x, model.size.y, model.size.z
@@ -67,12 +67,12 @@ mod test {
             models: vec![],
             palette: vec![],
             materials: vec![],
-        });
+        }, 5);
     }
 
     #[test]
     fn basic() {
         let vox = dot_vox::load("./examples/chr_cat.vox").unwrap();
-        let octrees: Vec<Octree<u32, u32>> = vox_to_octrees(vox);
+        let octrees: Vec<Octree<u32, u32>> = vox_to_octrees(vox, 5);
     }
 }
