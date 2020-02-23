@@ -286,10 +286,11 @@ impl<L: LocCode> AABB<L> {
             .collect()
     }
 
-    pub fn fit_in(&self, depth: u32) -> bool {
+    pub fn fit_in(&self, depth: u32, max_depth: u32) -> bool {
         let edge_size = 1_f64 / (2_usize.pow(depth) as f64);
-        ((self.x1 - self.x2).abs() - edge_size).abs() < std::f64::EPSILON
+        (((self.x1 - self.x2).abs() - edge_size).abs() < std::f64::EPSILON
         &&  ((self.y1 - self.y2).abs() - edge_size).abs() < std::f64::EPSILON
-        &&  ((self.z1 - self.z2).abs() - edge_size).abs() < std::f64::EPSILON
+        &&  ((self.z1 - self.z2).abs() - edge_size).abs() < std::f64::EPSILON)
+        || depth == max_depth
     }
 }

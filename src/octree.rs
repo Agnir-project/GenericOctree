@@ -34,6 +34,7 @@ pub enum ErrorKind {
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Octree<L: Eq + Hash, D> {
     content: HashMap<L, OctreeNode<L, D>>,
+    max_depth: u32,
 }
 
 impl<L, D> Octree<L, D>
@@ -55,16 +56,15 @@ where
     }
 
     /// Create a new Octree
-    pub fn new() -> Self {
+    pub fn new(max_depth: u32) -> Self {
         let content = HashMap::default();
-        Self { content }
+        Self { content, max_depth }
     }
 
     /// Create an Octree with given pre-allocated space.
-    pub fn with_capacity(size: usize, data: D) -> Self {
-        let mut content = HashMap::with_capacity(size);
-        content.insert(L::from(1), OctreeNode::new(data, L::from(1)));
-        Self { content }
+    pub fn with_capacity(max_depth: u32, size: usize) -> Self {
+        let content = HashMap::with_capacity(size);
+        Self { content, max_depth }
     }
 
     /// Return a tree node a node.
@@ -151,10 +151,12 @@ where
         depth: u32,
         loc_code: L,
     ) -> HashSet<L> {
+
         let blocks = aabb.explode(center);
+        let max_depth = self.max_depth;
         let mut fitting: HashSet<L> = blocks
             .iter()
-            .filter(|aabb| aabb.fit_in(depth))
+            .filter(|aabb| aabb.fit_in(depth, max_depth))
             .cloned()
             .map(|elem| {
                 OctreeNode::new(
@@ -165,23 +167,27 @@ where
             .map(|elem| self.insert(elem))
             .map(|loc_code| loc_code >> L::from(3))
             .collect();
-        let subdividables: HashSet<L> = blocks
-            .into_iter()
-            .filter(|aabb| !aabb.fit_in(depth))
-            .map(|aabb| {
-                let new_loc_code = (loc_code << L::from(3)) | (aabb.orientation as u8).into();
-                let new_center = aabb.orientation.make_new_center(new_loc_code, center);
-                self.merge_inner(
-                    aabb.with_orientation(Orientation::N),
-                    data,
-                    new_center,
-                    depth + 1,
-                    new_loc_code,
-                )
-            })
-            .flatten()
-            .collect();
-        fitting.extend(subdividables);
+        let subdivisables: HashSet<L> = if depth != self.max_depth {
+            blocks
+                .into_iter()
+                .filter(|aabb| !aabb.fit_in(depth, max_depth))
+                .map(|aabb| {
+                    let new_loc_code = (loc_code << L::from(3)) | (aabb.orientation as u8).into();
+                    let new_center = aabb.orientation.make_new_center(new_loc_code, center);
+                    self.merge_inner(
+                        aabb.with_orientation(Orientation::N),
+                        data,
+                        new_center,
+                        depth + 1,
+                        new_loc_code,
+                    )
+                })
+                .flatten()
+                .collect()
+        } else {
+            Vec::<L>::default().into_iter().collect()
+        };
+        fitting.extend(subdivisables);
         fitting
     }
 }
