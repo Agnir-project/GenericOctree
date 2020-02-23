@@ -10,25 +10,29 @@ use crate::Octree;
 use dot_vox::DotVoxData;
 use std::hash::Hash;
 
-impl<T: LocCode> From<DotVoxData> for Octree<T, (u8, u8, u8)> {
-    fn from(data: DotVoxData) -> Octree<T, (u8, u8, u8)> {
-        println!("Version of the file: {}.", data.version);
+pub(crate) fn vox_to_octrees<L: LocCode>(data: DotVoxData) -> Vec<Octree<L, u32>> {
+    println!("Version of the file: {}.", data.version);
+    println!("Palette: {:?}.", data.palette);
+    let mut octrees = Vec::with_capacity(1);
 
-        for (i, model) in data.models.iter().enumerate() {
+    for (i, model) in data.models.iter().enumerate() {
+        let octree = Octree::new();
+        println!(
+            "Model {} of size: x: {} y: {} z: {}.",
+            i, model.size.x, model.size.y, model.size.z
+        );
+        for voxel in model.voxels.iter() {
             println!(
-                "Model {} of size: x: {} y: {} z: {}.",
-                i, model.size.x, model.size.y, model.size.z
+                "x: {} y: {} z: {} color: {}",
+                voxel.x,
+                voxel.y,
+                voxel.z,
+                data.palette[voxel.i as usize] // TODO: maybe do a safe version.
             );
-            for voxel in model.voxels.iter() {
-                println!(
-                    "x: {} y: {} z: {} color: {}",
-                    voxel.x, voxel.y, voxel.z, data.palette[voxel.i as usize]
-                );
-            }
         }
-
-        Octree::new()
+        octrees.push(octree);
     }
+    octrees
 }
 
 #[cfg(test)]
@@ -42,7 +46,7 @@ mod test {
 
     #[test]
     fn empty() {
-        Octree::<u32, (u8, u8, u8)>::from(DotVoxData {
+        vox_to_octrees::<u32>(DotVoxData {
             version: 1,
             models: vec![],
             palette: vec![],
@@ -52,6 +56,7 @@ mod test {
 
     #[test]
     fn basic() {
-        Octree::<u32, (u8, u8, u8)>::from(dot_vox::load("./example_file.vox").unwrap());
+        let vox = dot_vox::load("./examples/chr_cat.vox").unwrap();
+        let octrees: Vec<Octree<u32, u32>> = vox_to_octrees(vox);
     }
 }

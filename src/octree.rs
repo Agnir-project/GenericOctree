@@ -184,4 +184,11 @@ where
         fitting.extend(subdividables);
         fitting
     }
+
+    #[cfg(feature = "vox")]
+    fn from_dotvox<U: AsRef<str>>(path: U) -> Result<Vec<Octree<L, u32>>, &'static str> {
+        let vox = dot_vox::load(path.as_ref())?;
+        let octrees: Vec<Octree<L, u32>> = crate::dot_vox::vox_to_octrees(vox);
+        Ok(octrees)
+    }
 }
