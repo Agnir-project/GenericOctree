@@ -1,7 +1,7 @@
 #[cfg(feature = "serialize")]
 extern crate serde;
 
-use crate::octree::{LocCode};
+use crate::octree::LocCode;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
