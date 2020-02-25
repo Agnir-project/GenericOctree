@@ -81,7 +81,7 @@ where
                     let file = std::fs::File::open(path)?;
                     let contents: Vec<u8> = file.bytes().filter_map(Result::ok).collect();
                     let mut decoder = ZlibDecoder::new(Vec::new());
-                    decoder.write_all(&contents);
+                    decoder.write_all(&contents)?;
                     let contents = decoder.finish()?;
                     let tree = bincode::deserialize_from::<&[u8], Self>(&contents).unwrap();
                     Ok(tree)
@@ -98,7 +98,7 @@ where
         let path = path_ref.as_ref();
         let binary = bincode::serialize(self).unwrap();
         let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
-        encoder.write_all(&binary);
+        encoder.write_all(&binary)?;
         std::fs::write(path, encoder.finish()?)
     }
 
@@ -121,7 +121,7 @@ where
 
     pub fn depth(&self) -> u32 {
         let keys = self.content.keys();
-        get_level_from_loc_code(keys.max().unwrap_or(&L::from(0_u8)).clone())
+        get_level_from_loc_code(*keys.max().unwrap_or(&L::from(0_u8)))
     }
 
     /// Return a tree node a node.

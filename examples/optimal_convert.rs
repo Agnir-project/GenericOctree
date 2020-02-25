@@ -14,5 +14,5 @@ fn main() {
         process::exit(1);
     }
 
-    let tree = Octree::<u64, u32>::load_from_file(out).unwrap();
+    let _tree = Octree::<u64, u32>::load_from_file(out).unwrap();
 }

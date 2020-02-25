@@ -1,6 +1,6 @@
 [package]
 name = "generic-octree"
-version = "0.3.0"
+version = "0.3.1"
 authors = [
             "Thomas \"nwmqpa\" Nicollet <thomas.nicollet@epitech.eu>",
             "Alexandre \"Afourcat\" Fourcat <alexandre.fourcat@epitech.eu>",
