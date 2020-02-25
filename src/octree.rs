@@ -8,9 +8,21 @@ use std::path::Path;
 
 use crate::node::OctreeNode;
 
-use crate::aabb::{Orientation, AABB};
+use crate::aabb::{get_level_from_loc_code, Orientation, AABB};
 
-pub trait LocCode = Eq
+#[cfg(feature = "serialize")]
+use serde::{de::DeserializeOwned, Serialize, Deserialize};
+
+#[cfg(feature = "serialize")]
+use flate2::Compression;
+
+#[cfg(feature = "serialize")]
+use flate2::write::{ZlibDecoder, ZlibEncoder};
+
+#[cfg(feature = "serialize")]
+use std::io::prelude::*;
+
+pub trait BaseLocCode = Eq
     + Ord
     + Hash
     + Copy
@@ -21,7 +33,23 @@ pub trait LocCode = Eq
     + BitAnd<Output = Self>
     + From<u8>
     + From<Self>
-    + TryInto<u8>;
+    + TryInto<u8>
+    + std::marker::Send
+    + std::marker::Sync;
+
+pub trait BaseData = Clone + Copy + PartialEq + Debug;
+
+#[cfg(feature = "serialize")]
+pub trait LocCode = BaseLocCode + Serialize + DeserializeOwned;
+
+#[cfg(not(feature = "serialize"))]
+pub trait LocCode = BaseLocCode;
+
+#[cfg(feature = "serialize")]
+pub trait Data = BaseData + Serialize + DeserializeOwned;
+
+#[cfg(not(feature = "serialize"))]
+pub trait Data = BaseData;
 
 /// Octree's error kinds.
 pub enum ErrorKind {
@@ -40,19 +68,38 @@ pub struct Octree<L: Eq + Hash, D> {
 impl<L, D> Octree<L, D>
 where
     L: LocCode,
-    D: Clone + Copy + PartialEq + Debug,
+    D: Data,
 {
     /// Load from voxel octree from files
-    pub fn load_from_file<P: AsRef<Path>>(path_ref: P) -> Result<Self, &'static str> {
+    /// TODO: Add better error management
+    pub fn load_from_file<P: AsRef<Path>>(path_ref: P) -> Result<Self, std::io::Error> {
         let path = path_ref.as_ref();
         match path.extension() {
             Some(x) => match x.to_str() {
                 #[cfg(feature = "dot_tree")]
-                Some(".tree") => Err("At least we got there"),
-                _ => Err("Cannot open format"),
+                Some("tree") => {
+                    let file = std::fs::File::open(path)?;
+                    let contents: Vec<u8> = file.bytes().filter_map(Result::ok).collect();
+                    let mut decoder = ZlibDecoder::new(Vec::new());
+                    decoder.write_all(&contents);
+                    let contents = decoder.finish()?;
+                    let tree = bincode::deserialize_from::<&[u8], Self>(&contents).unwrap();
+                    Ok(tree)
+                }
+                _ => Err(std::io::Error::from(std::io::ErrorKind::InvalidData)),
             },
-            None => Err("No format to open"),
+            None => Err(std::io::Error::from(std::io::ErrorKind::InvalidInput)),
         }
+    }
+
+    /// Save octree to file
+    #[cfg(feature = "dot_tree")]
+    pub fn save_to_file<P: AsRef<Path>>(&self, path_ref: P) -> Result<(), std::io::Error> {
+        let path = path_ref.as_ref();
+        let binary = bincode::serialize(self).unwrap();
+        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+        encoder.write_all(&binary);
+        std::fs::write(path, encoder.finish()?)
     }
 
     /// Create a new Octree
@@ -65,6 +112,16 @@ where
     pub fn with_capacity(max_depth: u32, size: usize) -> Self {
         let content = HashMap::with_capacity(size);
         Self { content, max_depth }
+    }
+
+    /// Get the size of an octree
+    pub fn size(&self) -> usize {
+        self.content.len()
+    }
+
+    pub fn depth(&self) -> u32 {
+        let keys = self.content.keys();
+        get_level_from_loc_code(keys.max().unwrap_or(&L::from(0_u8)).clone())
     }
 
     /// Return a tree node a node.
@@ -96,7 +153,7 @@ where
     }
 
     /// Merge an AABB into the tree
-    pub fn merge(&mut self, aabb: AABB<L>, data: D) {
+    pub fn merge(&mut self, aabb: AABB, data: D) {
         let mut codes: Vec<L> = self
             .merge_inner(aabb, data, (0.5, 0.5, 0.5), 1, L::from(1))
             .into_iter()
@@ -140,18 +197,42 @@ where
         }
     }
 
+    /// Transform an Octree of data D into an Octree of data U, provided that
+    /// U implement From<D>
+    pub fn transform<U: From<D>>(self) -> Octree<L, U> {
+        Octree {
+            content: self
+                .content
+                .into_iter()
+                .map(|(loc_code, data)| (loc_code, data.transform::<U>()))
+                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+            max_depth: self.max_depth,
+        }
+    }
+
+    /// tree.transform_fn(Rgb::from_hex);
+    pub fn transform_fn<U, F: Fn(D) -> U>(self, function: F) -> Octree<L, U> {
+        Octree {
+            content: self
+                .content
+                .into_iter()
+                .map(|(loc_code, data)| (loc_code, data.transform_fn(&function)))
+                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+            max_depth: self.max_depth,
+        }
+    }
+
     /// Internal function for recursively merging AABB.
     /// Returns a HashSet containing all the node that are affected by the merging, not all new nodes
     /// These affected nodes can be scheduled to merge data outside here
     fn merge_inner(
         &mut self,
-        aabb: AABB<L>,
+        aabb: AABB,
         data: D,
         center: (f64, f64, f64),
         depth: u32,
         loc_code: L,
     ) -> HashSet<L> {
-
         let blocks = aabb.explode(center);
         let max_depth = self.max_depth;
         let mut fitting: HashSet<L> = blocks
@@ -192,9 +273,13 @@ where
     }
 
     #[cfg(feature = "vox")]
-    fn from_dotvox<U: AsRef<str>>(path: U, max_depth: u32) -> Result<Vec<Octree<L, u32>>, &'static str> {
+    pub fn from_dotvox<U: AsRef<str>>(
+        path: U,
+        max_depth: u32,
+        optimal: bool,
+    ) -> Result<Vec<Octree<L, u32>>, &'static str> {
         let vox = dot_vox::load(path.as_ref())?;
-        let octrees: Vec<Octree<L, u32>> = crate::dot_vox::vox_to_octrees(vox, max_depth);
+        let octrees: Vec<Octree<L, u32>> = crate::dot_vox::vox_to_octrees(vox, max_depth, optimal);
         Ok(octrees)
     }
 }

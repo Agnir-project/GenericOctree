@@ -7,5 +7,4 @@ pub mod aabb;
 pub mod dot_vox;
 
 pub use octree::{Octree, LocCode};
-pub use node::{OctreeNode};
 pub use aabb::{AABB, Plane};
