@@ -11,7 +11,7 @@ use crate::node::OctreeNode;
 use crate::aabb::{get_level_from_loc_code, Orientation, AABB};
 
 #[cfg(feature = "serialize")]
-use serde::{de::DeserializeOwned, Serialize, Deserialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 #[cfg(feature = "serialize")]
 use flate2::Compression;
@@ -235,10 +235,13 @@ where
     ) -> HashSet<L> {
         let blocks = aabb.explode(center);
         let max_depth = self.max_depth;
-        let mut fitting: HashSet<L> = blocks
-            .iter()
-            .filter(|aabb| aabb.fit_in(depth, max_depth))
-            .cloned()
+
+        let (fitting, subdivisables): (Vec<AABB>, Vec<AABB>) = blocks
+            .into_iter()
+            .partition(|aabb| aabb.fit_in(depth, max_depth));
+
+        let codes: Vec<L> = fitting
+            .into_iter()
             .map(|elem| {
                 OctreeNode::new(
                     data,
@@ -248,7 +251,8 @@ where
             .map(|elem| self.insert(elem))
             .map(|loc_code| loc_code >> L::from(3))
             .collect();
-        let subdivisables: HashSet<L> = if depth != self.max_depth {
+
+        codes.extend(if depth != self.max_depth {
             blocks
                 .into_iter()
                 .filter(|aabb| !aabb.fit_in(depth, max_depth))
@@ -266,10 +270,10 @@ where
                 .flatten()
                 .collect()
         } else {
-            Vec::<L>::default().into_iter().collect()
-        };
-        fitting.extend(subdivisables);
-        fitting
+            Vec::<L>::default()
+        });
+
+        codes.into_iter().collect::<HashSet<L>>();
     }
 
     #[cfg(feature = "vox")]
