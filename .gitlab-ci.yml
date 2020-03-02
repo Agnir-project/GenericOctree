@@ -9,14 +9,12 @@ rust-format:
   image: rustlang/rust:nightly
   script:
     - cargo fmt -- --check
-  allow_failure: true
 
 rust-clippy:
   stage: clippy
   image: rustlang/rust:nightly
   script:
-    - cargo clippy --all-features 
-  allow_failure: true
+    - cargo clippy --all-features
 
 rust-all-features:
   stage: build
@@ -45,7 +43,6 @@ rust-stable:
   script:
     - cargo build --verbose
     - cargo test --verbose
-  allow_failure: true
 
 rust-stable-serde:
   stage: build
@@ -53,7 +50,6 @@ rust-stable-serde:
   script:
     - cargo build --features serialize --verbose
     - cargo test --features serialize --verbose
-  allow_failure: true
 
 publish:
   stage: publish
@@ -62,5 +58,4 @@ publish:
     - cargo login $CRATES_IO_TOKEN
     - cargo package
     - cargo publish
-  allow_failure: true
 
