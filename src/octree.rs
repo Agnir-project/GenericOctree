@@ -39,23 +39,8 @@ pub struct Octree<L: Eq + Hash, D> {
 #[cfg(feature = "dot_tree")]
 impl<L, D> Octree<L, D>
 where
-    L: Eq
-        + Ord
-        + Hash
-        + Copy
-        + Debug
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + From<u8>
-        + From<Self>
-        + TryInto<u8>
-        + std::marker::Send
-        + std::marker::Sync
-        + Serialize
-        + DeserializeOwned,
-    D: Clone + Copy + PartialEq + Debug + Serialize + DeserializeOwned,
+    L: Eq + Hash + Serialize + DeserializeOwned,
+    D: Serialize + DeserializeOwned,
 {
     /// Load from voxel octree from files
     /// TODO: Add better error management
@@ -95,17 +80,13 @@ where
         + Ord
         + Hash
         + Copy
-        + Debug
         + Shr<Output = L>
         + Shl<Output = L>
         + BitOr<Output = L>
         + BitAnd<Output = L>
         + From<u8>
-        + From<Self>
-        + TryInto<u8>
-        + std::marker::Send
-        + std::marker::Sync,
-    D: Clone + Copy + PartialEq + Debug,
+        + From<L>,
+    D: Copy + PartialEq,
 {
     /// Create a new Octree
     pub fn new(max_depth: u32) -> Self {
@@ -279,7 +260,25 @@ where
 
         codes.into_iter().collect::<HashSet<L>>()
     }
+}
 
+impl<L, D> Octree<L, D>
+where
+    L: Eq
+        + Ord
+        + Hash
+        + Copy
+        + Debug
+        + Shr<Output = L>
+        + Shl<Output = L>
+        + BitOr<Output = L>
+        + BitAnd<Output = L>
+        + From<u8>
+        + From<L>
+        + TryInto<u8>
+        + std::marker::Send
+        + std::marker::Sync,
+{
     #[cfg(feature = "vox")]
     pub fn from_dotvox<U: AsRef<str>>(
         path: U,

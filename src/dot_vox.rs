@@ -6,10 +6,13 @@
 //
 
 use crate::aabb::AABB;
-use crate::octree::LocCode;
 use crate::Octree;
 use dot_vox::{DotVoxData, Model, Voxel};
 use rayon::prelude::*;
+use std::convert::TryInto;
+use std::fmt::Debug;
+use std::hash::Hash;
+use std::ops::{BitAnd, BitOr, Shl, Shr};
 
 impl From<&Voxel> for AABB {
     fn from(voxel: &Voxel) -> AABB {
@@ -38,13 +41,29 @@ fn voxel_to_aabb(
     )
 }
 
-pub(crate) fn model_to_octree<L: LocCode>(
+pub(crate) fn model_to_octree<L>(
     model: &Model,
     max_depth: u32,
     offset: (f64, f64, f64),
     normalization_vector: (f64, f64, f64),
     palette: &[u32],
-) -> Octree<L, u32> {
+) -> Octree<L, u32>
+where
+    L: Eq
+        + Ord
+        + Hash
+        + Copy
+        + Debug
+        + Shr<Output = L>
+        + Shl<Output = L>
+        + BitOr<Output = L>
+        + BitAnd<Output = L>
+        + From<u8>
+        + From<L>
+        + TryInto<u8>
+        + std::marker::Send
+        + std::marker::Sync,
+{
     let mut octree = Octree::new(max_depth);
     model
         .voxels
@@ -58,11 +77,27 @@ pub(crate) fn model_to_octree<L: LocCode>(
     octree
 }
 
-pub(crate) fn vox_to_octrees<L: LocCode>(
+pub(crate) fn vox_to_octrees<L>(
     data: DotVoxData,
     max_depth: u32,
     optimal: bool,
-) -> Vec<Octree<L, u32>> {
+) -> Vec<Octree<L, u32>>
+where
+    L: Eq
+        + Ord
+        + Hash
+        + Copy
+        + Debug
+        + Shr<Output = L>
+        + Shl<Output = L>
+        + BitOr<Output = L>
+        + BitAnd<Output = L>
+        + From<u8>
+        + From<L>
+        + TryInto<u8>
+        + std::marker::Send
+        + std::marker::Sync,
+{
     data.models
         .iter()
         .map(|model| {

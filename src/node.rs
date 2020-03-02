@@ -11,8 +11,7 @@ pub struct OctreeNode<L, D> {
     pub data: D,
 }
 
-impl<L, D> OctreeNode<L, D>
-{
+impl<L, D> OctreeNode<L, D> {
     /// Create a new Node from it's Data and a LocCode.
     pub(crate) fn new(data: D, loc_code: L) -> Self {
         Self { data, loc_code }
