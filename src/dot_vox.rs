@@ -130,7 +130,7 @@ mod test {
                 materials: vec![],
             },
             5,
-            false
+            false,
         );
     }
 
