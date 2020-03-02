@@ -22,35 +22,6 @@ use flate2::write::{ZlibDecoder, ZlibEncoder};
 #[cfg(feature = "serialize")]
 use std::io::prelude::*;
 
-pub trait BaseLocCode = Eq
-    + Ord
-    + Hash
-    + Copy
-    + Debug
-    + Shr<Output = Self>
-    + Shl<Output = Self>
-    + BitOr<Output = Self>
-    + BitAnd<Output = Self>
-    + From<u8>
-    + From<Self>
-    + TryInto<u8>
-    + std::marker::Send
-    + std::marker::Sync;
-
-pub trait BaseData = Clone + Copy + PartialEq + Debug;
-
-#[cfg(feature = "serialize")]
-pub trait LocCode = BaseLocCode + Serialize + DeserializeOwned;
-
-#[cfg(not(feature = "serialize"))]
-pub trait LocCode = BaseLocCode;
-
-#[cfg(feature = "serialize")]
-pub trait Data = BaseData + Serialize + DeserializeOwned;
-
-#[cfg(not(feature = "serialize"))]
-pub trait Data = BaseData;
-
 /// Octree's error kinds.
 pub enum ErrorKind {
     CannotPlace(u8),
@@ -65,10 +36,26 @@ pub struct Octree<L: Eq + Hash, D> {
     max_depth: u32,
 }
 
+#[cfg(feature = "dot_tree")]
 impl<L, D> Octree<L, D>
 where
-    L: LocCode,
-    D: Data,
+    L: Eq
+        + Ord
+        + Hash
+        + Copy
+        + Debug
+        + Shr<Output = L>
+        + Shl<Output = L>
+        + BitOr<Output = L>
+        + BitAnd<Output = L>
+        + From<u8>
+        + From<Self>
+        + TryInto<u8>
+        + std::marker::Send
+        + std::marker::Sync
+        + Serialize
+        + DeserializeOwned,
+    D: Clone + Copy + PartialEq + Debug + Serialize + DeserializeOwned,
 {
     /// Load from voxel octree from files
     /// TODO: Add better error management
@@ -93,7 +80,6 @@ where
     }
 
     /// Save octree to file
-    #[cfg(feature = "dot_tree")]
     pub fn save_to_file<P: AsRef<Path>>(&self, path_ref: P) -> Result<(), std::io::Error> {
         let path = path_ref.as_ref();
         let binary = bincode::serialize(self).unwrap();
@@ -101,7 +87,26 @@ where
         encoder.write_all(&binary)?;
         std::fs::write(path, encoder.finish()?)
     }
+}
 
+impl<L, D> Octree<L, D>
+where
+    L: Eq
+        + Ord
+        + Hash
+        + Copy
+        + Debug
+        + Shr<Output = L>
+        + Shl<Output = L>
+        + BitOr<Output = L>
+        + BitAnd<Output = L>
+        + From<u8>
+        + From<Self>
+        + TryInto<u8>
+        + std::marker::Send
+        + std::marker::Sync,
+    D: Clone + Copy + PartialEq + Debug,
+{
     /// Create a new Octree
     pub fn new(max_depth: u32) -> Self {
         let content = HashMap::default();

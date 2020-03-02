@@ -1,4 +1,4 @@
-#![feature(trait_alias)]
+#![cfg_attr(nightly, feature(trait_alias))]
 
 pub mod aabb;
 #[cfg(feature = "vox")]
@@ -7,4 +7,4 @@ pub mod node;
 pub mod octree;
 
 pub use aabb::{Plane, AABB};
-pub use octree::{LocCode, Octree};
+pub use octree::Octree;

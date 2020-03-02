@@ -1,5 +1,4 @@
-use crate::LocCode;
-use std::ops::BitOr;
+use std::ops::{BitOr, Shl, Shr};
 
 // TODO: Make u8 not rely on enum position
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +34,10 @@ pub enum Orientation {
 
 type Center = (f64, f64, f64);
 
-pub fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32 {
+pub fn get_level_from_loc_code<L>(mut loc_code: L) -> u32
+where
+    L: Eq + From<u8> + Shr<Output = L> + Shl<Output = L>,
+{
     let mut level = 1;
     while loc_code != L::from(1) {
         loc_code = loc_code >> L::from(3);
@@ -45,7 +47,10 @@ pub fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32 {
 }
 
 impl Orientation {
-    pub fn make_new_center<L: LocCode>(self, loc_code: L, center: Center) -> Center {
+    pub fn make_new_center<L>(self, loc_code: L, center: Center) -> Center
+    where
+        L: Eq + From<u8> + Shr<Output = L> + Shl<Output = L>,
+    {
         let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(loc_code)) as f64);
         match self {
             Self::LBU => (center.0 - offset, center.1 + offset, center.2 - offset),

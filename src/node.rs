@@ -1,8 +1,6 @@
 #[cfg(feature = "serialize")]
 extern crate serde;
 
-use crate::octree::{Data, LocCode};
-
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
@@ -14,9 +12,6 @@ pub struct OctreeNode<L, D> {
 }
 
 impl<L, D> OctreeNode<L, D>
-where
-    L: LocCode,
-    D: Data,
 {
     /// Create a new Node from it's Data and a LocCode.
     pub(crate) fn new(data: D, loc_code: L) -> Self {
