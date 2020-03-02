@@ -240,7 +240,7 @@ where
             .into_iter()
             .partition(|aabb| aabb.fit_in(depth, max_depth));
 
-        let codes: Vec<L> = fitting
+        let mut codes: Vec<L> = fitting
             .into_iter()
             .map(|elem| {
                 OctreeNode::new(
@@ -253,9 +253,8 @@ where
             .collect();
 
         codes.extend(if depth != self.max_depth {
-            blocks
+            subdivisables
                 .into_iter()
-                .filter(|aabb| !aabb.fit_in(depth, max_depth))
                 .map(|aabb| {
                     let new_loc_code = (loc_code << L::from(3)) | (aabb.orientation as u8).into();
                     let new_center = aabb.orientation.make_new_center(new_loc_code, center);
@@ -273,7 +272,7 @@ where
             Vec::<L>::default()
         });
 
-        codes.into_iter().collect::<HashSet<L>>();
+        codes.into_iter().collect::<HashSet<L>>()
     }
 
     #[cfg(feature = "vox")]
