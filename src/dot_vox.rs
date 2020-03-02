@@ -25,13 +25,13 @@ impl From<&Voxel> for AABB {
 }
 
 fn voxel_to_aabb(
-    voxel: &Voxel,
+    voxel: Voxel,
     offset: (f64, f64, f64),
     normalization_vector: (f64, f64, f64),
     palette: &[u32],
 ) -> (AABB, u32) {
     (
-        AABB::from(voxel)
+        AABB::from(&voxel)
             .offset(offset)
             .normalize_with(normalization_vector),
         palette[voxel.i as usize],
@@ -49,7 +49,7 @@ pub(crate) fn model_to_octree<L: LocCode>(
     model
         .voxels
         .iter()
-        .map(|voxel| voxel_to_aabb(voxel, offset, normalization_vector, palette))
+        .map(|voxel: &Voxel| voxel_to_aabb(*voxel, offset, normalization_vector, palette))
         .collect::<Vec<(AABB, u32)>>()
         .into_iter()
         .for_each(|(aabb, data)| {
