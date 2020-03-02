@@ -43,7 +43,7 @@ pub(crate) fn model_to_octree<L: LocCode>(
     max_depth: u32,
     offset: (f64, f64, f64),
     normalization_vector: (f64, f64, f64),
-    palette: &[u32]
+    palette: &[u32],
 ) -> Octree<L, u32> {
     let mut octree = Octree::new(max_depth);
     model
@@ -63,50 +63,52 @@ pub(crate) fn vox_to_octrees<L: LocCode>(
     max_depth: u32,
     optimal: bool,
 ) -> Vec<Octree<L, u32>> {
-    data.models.iter().map(|model| {
-        let max_size = std::cmp::max(std::cmp::max(model.size.x, model.size.y), model.size.z);
-        let frame_size = 2_f64.powf((max_size as f64).log2().ceil()) as u32;
+    data.models
+        .iter()
+        .map(|model| {
+            let max_size = std::cmp::max(std::cmp::max(model.size.x, model.size.y), model.size.z);
+            let frame_size = 2_f64.powf((max_size as f64).log2().ceil()) as u32;
 
-        let offsets = if optimal {
-            let mut offsets = vec![];
-            for range_x in 0_u32..(frame_size - model.size.x) {
-                for range_y in 0_u32..(frame_size - model.size.y) {
-                    for range_z in 0_u32..(frame_size - model.size.z) {
-                        offsets.push((range_x, range_y, range_z));
+            let offsets = if optimal {
+                let mut offsets = vec![];
+                for range_x in 0_u32..(frame_size - model.size.x) {
+                    for range_y in 0_u32..(frame_size - model.size.y) {
+                        for range_z in 0_u32..(frame_size - model.size.z) {
+                            offsets.push((range_x, range_y, range_z));
+                        }
                     }
                 }
-            }
-            offsets
-        } else {
-            vec![(
-                (frame_size - model.size.x) / 2,
-                (frame_size - model.size.y) / 2,
-                (frame_size - model.size.z) / 2,
-            )]
-        };
-        println!(
-            "Model of size: ({}, {}, {}), Framing in: ({}, {}, {})",
-            model.size.x, model.size.y, model.size.z,
-            frame_size, frame_size, frame_size
-        );
-        let mut trees = offsets
-            .par_iter()
-            .map(|offset| {
-                println!("Computing offset: {:?}", offset);
-                let tree = model_to_octree(
-                    model,
-                    max_depth,
-                    (offset.0 as f64, offset.1 as f64, offset.2 as f64),
-                    (frame_size as f64, frame_size as f64, frame_size as f64),
-                    &data.palette
-                );
-                let size = tree.size();
-                (tree, size)
-            })
-            .collect::<Vec<(Octree<L, u32>, usize)>>();
-        trees.sort_by(|a, b| a.1.cmp(&b.1).reverse());
-        trees.pop().unwrap().0
-    }).collect::<Vec<Octree<L, u32>>>()
+                offsets
+            } else {
+                vec![(
+                    (frame_size - model.size.x) / 2,
+                    (frame_size - model.size.y) / 2,
+                    (frame_size - model.size.z) / 2,
+                )]
+            };
+            println!(
+                "Model of size: ({}, {}, {}), Framing in: ({}, {}, {})",
+                model.size.x, model.size.y, model.size.z, frame_size, frame_size, frame_size
+            );
+            let mut trees = offsets
+                .par_iter()
+                .map(|offset| {
+                    println!("Computing offset: {:?}", offset);
+                    let tree = model_to_octree(
+                        model,
+                        max_depth,
+                        (offset.0 as f64, offset.1 as f64, offset.2 as f64),
+                        (frame_size as f64, frame_size as f64, frame_size as f64),
+                        &data.palette,
+                    );
+                    let size = tree.size();
+                    (tree, size)
+                })
+                .collect::<Vec<(Octree<L, u32>, usize)>>();
+            trees.sort_by(|a, b| a.1.cmp(&b.1).reverse());
+            trees.pop().unwrap().0
+        })
+        .collect::<Vec<Octree<L, u32>>>()
 }
 
 #[cfg(test)]

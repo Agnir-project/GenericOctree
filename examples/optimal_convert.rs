@@ -1,5 +1,5 @@
-use std::env;
 use generic_octree::Octree;
+use std::env;
 use std::process;
 
 fn main() {

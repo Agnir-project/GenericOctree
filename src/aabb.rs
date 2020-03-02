@@ -1,5 +1,5 @@
-use std::ops::BitOr;
 use crate::LocCode;
+use std::ops::BitOr;
 
 // TODO: Make u8 not rely on enum position
 #[derive(Debug, Clone, Copy)]
@@ -35,7 +35,7 @@ pub enum Orientation {
 
 type Center = (f64, f64, f64);
 
-pub fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32{
+pub fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32 {
     let mut level = 1;
     while loc_code != L::from(1) {
         loc_code = loc_code >> L::from(3);
@@ -45,7 +45,6 @@ pub fn get_level_from_loc_code<L: LocCode>(mut loc_code: L) -> u32{
 }
 
 impl Orientation {
-
     pub fn make_new_center<L: LocCode>(self, loc_code: L, center: Center) -> Center {
         let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(loc_code)) as f64);
         match self {
@@ -57,15 +56,13 @@ impl Orientation {
             Self::RFD => (center.0 + offset, center.1 - offset, center.2 + offset),
             Self::RFU => (center.0 + offset, center.1 + offset, center.2 + offset),
             Self::RBU => (center.0 + offset, center.1 + offset, center.2 - offset),
-            _ => center
+            _ => center,
         }
-    } 
-
+    }
 }
 
 /// TODO: Make this TryInto
 impl Into<u8> for Orientation {
-
     fn into(self) -> u8 {
         match self {
             Self::LBU => 0,
@@ -75,11 +72,10 @@ impl Into<u8> for Orientation {
             Self::RBD => 4,
             Self::RFD => 5,
             Self::RFU => 6,
-            Self::RBU => 7, 
-            _ => 8
+            Self::RBU => 7,
+            _ => 8,
         }
     }
-
 }
 
 impl BitOr for Orientation {
@@ -199,14 +195,21 @@ pub struct AABB {
 
 #[inline]
 pub fn min<T: PartialOrd>(a: T, b: T) -> T {
-    if a > b { b } else { a }
+    if a > b {
+        b
+    } else {
+        a
+    }
 }
 
 #[inline]
 pub fn max<T: PartialOrd>(a: T, b: T) -> T {
-    if a < b { b } else { a }
+    if a < b {
+        b
+    } else {
+        a
+    }
 }
-
 
 impl AABB {
     pub fn new(x1: f64, y1: f64, z1: f64, x2: f64, y2: f64, z2: f64) -> Self {
@@ -237,7 +240,7 @@ impl AABB {
                         Self::new(plane.0, self.y1, self.z1, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::R),
                     ]
-                } else if self.x2 <= plane.0  {
+                } else if self.x2 <= plane.0 {
                     vec![self.with_orientation(orientation | Orientation::L)]
                 } else {
                     vec![self.with_orientation(orientation | Orientation::R)]
@@ -251,7 +254,7 @@ impl AABB {
                         Self::new(self.x1, plane.0, self.z1, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::U),
                     ]
-                } else if self.y2 <= plane.0  {
+                } else if self.y2 <= plane.0 {
                     vec![self.with_orientation(orientation | Orientation::D)]
                 } else {
                     vec![self.with_orientation(orientation | Orientation::U)]
@@ -259,13 +262,13 @@ impl AABB {
             }
             PlaneAxis::Z => {
                 if self.z1 < plane.0 && self.z2 > plane.0 {
-                     vec![
+                    vec![
                         Self::new(self.x1, self.y1, self.z1, self.x2, self.y2, plane.0)
                             .with_orientation(orientation | Orientation::B),
                         Self::new(self.x1, self.y1, plane.0, self.x2, self.y2, self.z2)
                             .with_orientation(orientation | Orientation::F),
                     ]
-                } else if self.z2 <= plane.0  {
+                } else if self.z2 <= plane.0 {
                     vec![self.with_orientation(orientation | Orientation::B)]
                 } else {
                     vec![self.with_orientation(orientation | Orientation::F)]
@@ -287,9 +290,9 @@ impl AABB {
     pub fn fit_in(&self, depth: u32, max_depth: u32) -> bool {
         let edge_size = 1_f64 / (2_usize.pow(depth) as f64);
         (((self.x1 - self.x2).abs() - edge_size).abs() < std::f64::EPSILON
-        &&  ((self.y1 - self.y2).abs() - edge_size).abs() < std::f64::EPSILON
-        &&  ((self.z1 - self.z2).abs() - edge_size).abs() < std::f64::EPSILON)
-        || depth == max_depth
+            && ((self.y1 - self.y2).abs() - edge_size).abs() < std::f64::EPSILON
+            && ((self.z1 - self.z2).abs() - edge_size).abs() < std::f64::EPSILON)
+            || depth == max_depth
     }
 
     pub fn offset(mut self, offset: (f64, f64, f64)) -> Self {
@@ -312,7 +315,7 @@ impl AABB {
             self.z1 / max_z,
             self.x2 / max_x,
             self.y2 / max_y,
-            self.z2 / max_z
+            self.z2 / max_z,
         )
     }
 
@@ -323,7 +326,7 @@ impl AABB {
             self.z1 / normalization_vector.2,
             self.x2 / normalization_vector.0,
             self.y2 / normalization_vector.1,
-            self.z2 / normalization_vector.2
+            self.z2 / normalization_vector.2,
         )
     }
 }
