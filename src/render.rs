@@ -1,19 +1,18 @@
 use crate::node::OctreeNode;
 use crate::{aabb::get_level_from_loc_code, Octree};
 use genmesh::Position;
-use genmesh::Vertex;
+
 use std::{
     fmt::Debug,
     hash::Hash,
-    ops::{BitAnd, BitOr, Shl, Shr, BitXor, Not},
+    ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr},
 };
 
 pub struct Model {
-    vertices: Vec<PosColorNorm>,
-    indices: Vec<u32>,
+    pub vertices: Vec<PosColorNorm>,
+    pub indices: Vec<u32>,
 }
 use rendy::mesh::PosColorNorm;
-
 
 lazy_static::lazy_static! {
     static ref LBD: Position = Position {
@@ -65,7 +64,6 @@ lazy_static::lazy_static! {
     };
 }
 
-
 fn get_vertices<L>(loc_code: &L, data: &OctreeNode<L, u32>) -> Vec<PosColorNorm>
 where
     L: Eq
@@ -84,354 +82,384 @@ where
     let center = get_center(loc_code.clone());
     let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(loc_code.clone())) as f64);
     let color = data.data.to_be_bytes();
-    let color = [color[0] as f32 / 256_f32, color[1] as f32 / 256_f32, color[2] as f32 / 256_f32, color[3] as f32 / 256_f32];
+    let color = [
+        color[0] as f32 / 256_f32,
+        color[1] as f32 / 256_f32,
+        color[2] as f32 / 256_f32,
+        color[3] as f32 / 256_f32,
+    ];
     vec![
         // LBD, LFD, LBU
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBD).into(),
-            color:  color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBU).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         // LFD, LFU, LBU
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBU).into(),
-            color: color.into()
+            color: color.into(),
         },
-
-    
         // LBD, LFD, RFD
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFD).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //LBD, RBD, RFD
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFD).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RBD, RBU, LBD
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBD).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RBU, LBU, LBD
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBD).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RBU, RFU, LBU
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBU).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RFU, LFU, LBU
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*LBU).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RFU, LFD, LFU
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         //RFU, LFD, RFD
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 - offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*LFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFD).into(),
-            color: color.into()
+            color: color.into(),
         },
-
         //RFU, RBU, RFD
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBU).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFD).into(),
-            color: color.into()
+            color: color.into(),
         },
-        
         //RFD, RBD, RBU
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 + offset) as f32 
-            }.into(),
+                z: (center.2 + offset) as f32,
+            }
+            .into(),
             normal: (*RFD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 - offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBD).into(),
-            color: color.into()
+            color: color.into(),
         },
         PosColorNorm {
             position: Position {
                 x: (center.0 + offset) as f32,
                 y: (center.1 + offset) as f32,
-                z: (center.2 - offset) as f32 
-            }.into(),
+                z: (center.2 - offset) as f32,
+            }
+            .into(),
             normal: (*RBU).into(),
-            color: color.into()
+            color: color.into(),
         },
     ]
 }
@@ -498,9 +526,7 @@ where
         let vertices = tree
             .content
             .iter()
-            .map(|item: (&L, &OctreeNode<L, u32>)| {
-                get_vertices(item.0, item.1)
-            })
+            .map(|item: (&L, &OctreeNode<L, u32>)| get_vertices(item.0, item.1))
             .flatten()
             .collect::<Vec<PosColorNorm>>();
         let len = vertices.len();

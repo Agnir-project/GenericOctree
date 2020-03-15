@@ -18,7 +18,7 @@ use std::ops::{BitAnd, BitOr, Shl, Shr};
 pub enum ConversionType {
     Default,
     Optimal,
-    Worst
+    Worst,
 }
 
 impl From<&Voxel> for AABB {
@@ -150,7 +150,7 @@ where
             match conversion_type {
                 ConversionType::Optimal => trees.sort_by(|a, b| a.1.cmp(&b.1).reverse()),
                 ConversionType::Worst => trees.sort_by(|a, b| a.1.cmp(&b.1)),
-                _ => ()
+                _ => (),
             };
             trees.pop().unwrap().0
         })
@@ -176,7 +176,7 @@ mod test {
                 materials: vec![],
             },
             5,
-            false,
+            ConversionType::Default,
         );
     }
 
