@@ -1,8 +1,6 @@
 use generic_octree::Octree;
 
-
 use std::env;
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
