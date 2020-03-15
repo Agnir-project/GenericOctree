@@ -6,37 +6,15 @@ stages:
 
 rust-format:
   stage: format
-  image: rustlang/rust:nightly
+  image: rust
   script:
     - cargo fmt -- --check
 
 rust-clippy:
   stage: clippy
-  image: rustlang/rust:nightly
+  image: rust
   script:
-    - rustup component add clippy --toolchain nightly-x86_64-unknown-linux-gnu
     - cargo clippy --all-features
-
-rust-all-features:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose --all-features
-    - cargo test --verbose --all-features
-
-rust-nightly:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --verbose
-    - cargo test --verbose
-
-rust-nightly-serde:
-  stage: build
-  image: rustlang/rust:nightly
-  script:
-    - cargo build --features serialize --verbose
-    - cargo test --features serialize --verbose
 
 rust-stable:
   stage: build
@@ -54,7 +32,7 @@ rust-stable-serde:
 
 publish:
   stage: publish
-  image: rustlang/rust:nightly
+  image: rust
   script:
     - cargo login $CRATES_IO_TOKEN
     - cargo package
