@@ -8,12 +8,14 @@ rust-format:
   stage: format
   image: rust
   script:
+    - rustup component add rustfmt
     - cargo fmt -- --check
 
 rust-clippy:
   stage: clippy
   image: rust
   script:
+    - rustup component add clippy
     - cargo clippy --all-features
 
 rust-stable:
