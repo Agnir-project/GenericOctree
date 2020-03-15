@@ -79,8 +79,8 @@ where
         + BitXor<Output = L>
         + Not<Output = L>,
 {
-    let center = get_center(loc_code.clone());
-    let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(loc_code.clone())) as f64);
+    let center = get_center(*loc_code);
+    let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(*loc_code)) as f64);
     let color = data.data.to_be_bytes();
     let color = [
         color[0] as f32 / 256_f32,
