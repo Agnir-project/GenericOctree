@@ -5,6 +5,8 @@ pub mod aabb;
 pub mod dot_vox;
 pub mod node;
 pub mod octree;
+#[cfg(feature = "render")]
+pub mod render;
 
 pub use aabb::{Plane, AABB};
 pub use octree::Octree;

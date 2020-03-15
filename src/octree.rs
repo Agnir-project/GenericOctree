@@ -32,7 +32,7 @@ pub enum ErrorKind {
 #[derive(Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Octree<L: Eq + Hash, D> {
-    content: HashMap<L, OctreeNode<L, D>>,
+    pub content: HashMap<L, OctreeNode<L, D>>,
     max_depth: u32,
 }
 
@@ -283,7 +283,7 @@ where
     pub fn from_dotvox<U: AsRef<str>>(
         path: U,
         max_depth: u32,
-        optimal: bool,
+        optimal: crate::dot_vox::ConversionType,
     ) -> Result<Vec<Octree<L, u32>>, &'static str> {
         let vox = dot_vox::load(path.as_ref())?;
         let octrees: Vec<Octree<L, u32>> = crate::dot_vox::vox_to_octrees(vox, max_depth, optimal);

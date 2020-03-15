@@ -14,6 +14,13 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{BitAnd, BitOr, Shl, Shr};
 
+#[derive(PartialEq)]
+pub enum ConversionType {
+    Default,
+    Optimal,
+    Worst
+}
+
 impl From<&Voxel> for AABB {
     fn from(voxel: &Voxel) -> AABB {
         AABB::new(
@@ -80,7 +87,7 @@ where
 pub(crate) fn vox_to_octrees<L>(
     data: DotVoxData,
     max_depth: u32,
-    optimal: bool,
+    conversion_type: ConversionType,
 ) -> Vec<Octree<L, u32>>
 where
     L: Eq
@@ -104,7 +111,7 @@ where
             let max_size = std::cmp::max(std::cmp::max(model.size.x, model.size.y), model.size.z);
             let frame_size = 2_f64.powf((max_size as f64).log2().ceil()) as u32;
 
-            let offsets = if optimal {
+            let offsets = if conversion_type != ConversionType::Default {
                 let mut offsets = vec![];
                 for range_x in 0_u32..(frame_size - model.size.x) {
                     for range_y in 0_u32..(frame_size - model.size.y) {
@@ -140,7 +147,11 @@ where
                     (tree, size)
                 })
                 .collect::<Vec<(Octree<L, u32>, usize)>>();
-            trees.sort_by(|a, b| a.1.cmp(&b.1).reverse());
+            match conversion_type {
+                ConversionType::Optimal => trees.sort_by(|a, b| a.1.cmp(&b.1).reverse()),
+                ConversionType::Worst => trees.sort_by(|a, b| a.1.cmp(&b.1)),
+                _ => ()
+            };
             trees.pop().unwrap().0
         })
         .collect::<Vec<Octree<L, u32>>>()
@@ -172,6 +183,6 @@ mod test {
     #[test]
     fn basic() {
         let vox = dot_vox::load("./examples/monu10.vox").unwrap();
-        let _octrees: Vec<Octree<u32, u32>> = vox_to_octrees(vox, 21, false);
+        let _octrees: Vec<Octree<u32, u32>> = vox_to_octrees(vox, 21, ConversionType::Default);
     }
 }
