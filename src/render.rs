@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
     };
 }
 
-fn get_vertices<L>(loc_code: &L, data: &OctreeNode<L, u32>) -> Vec<PosColorNorm>
+fn get_vertices<L>(loc_code: &L, data: color::Rgb<u8>) -> Vec<PosColorNorm>
 where
     L: Eq
         + Debug
@@ -81,12 +81,11 @@ where
 {
     let center = get_center(*loc_code);
     let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(*loc_code)) as f64);
-    let color = data.data.to_be_bytes();
     let color = [
-        color[0] as f32 / 256_f32,
-        color[1] as f32 / 256_f32,
-        color[2] as f32 / 256_f32,
-        color[3] as f32 / 256_f32,
+        data.r as f32 / 256_f32,
+        data.g as f32 / 256_f32,
+        data.b as f32 / 256_f32,
+        1.0,
     ];
     vec![
         // LBD, LFD, LBU
@@ -526,7 +525,9 @@ where
         let vertices = tree
             .content
             .iter()
-            .map(|item: (&L, &OctreeNode<L, u32>)| get_vertices(item.0, item.1))
+            .map(|item: (&L, &OctreeNode<L, u32>)| {
+                get_vertices(item.0, color::Rgb::from_hex(item.1.data))
+            })
             .flatten()
             .collect::<Vec<PosColorNorm>>();
         let len = vertices.len();
