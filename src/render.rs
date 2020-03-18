@@ -64,7 +64,7 @@ lazy_static::lazy_static! {
     };
 }
 
-fn get_vertices<L>(loc_code: &L, data: color::Rgb<u8>) -> Vec<PosColorNorm>
+fn get_vertices<L>(loc_code: &L, data: color::Rgba<u8>) -> Vec<PosColorNorm>
 where
     L: Eq
         + Debug
@@ -82,9 +82,9 @@ where
     let center = get_center(*loc_code);
     let offset: f64 = 1.0 / ((2 as u32).pow(get_level_from_loc_code(*loc_code)) as f64);
     let color = [
-        data.r as f32 / 256_f32,
-        data.g as f32 / 256_f32,
-        data.b as f32 / 256_f32,
+        data.a as f32 / 256_f32,
+        data.rgb().b as f32 / 256_f32,
+        data.rgb().g as f32 / 256_f32,
         1.0,
     ];
     vec![
@@ -526,7 +526,7 @@ where
             .content
             .iter()
             .map(|item: (&L, &OctreeNode<L, u32>)| {
-                get_vertices(item.0, color::Rgb::from_hex(item.1.data))
+                get_vertices(item.0, color::Rgba::from_hex(item.1.data))
             })
             .flatten()
             .collect::<Vec<PosColorNorm>>();
