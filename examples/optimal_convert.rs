@@ -9,7 +9,7 @@ fn main() {
     let filename = &args[1];
     let out = &args[2];
 
-    if let Ok(s) = Octree::<u64, u32>::from_dotvox(filename, 21, ConversionType::Worst) {
+    if let Ok(s) = Octree::<u64, u32>::from_dotvox(filename, 21, ConversionType::Default) {
         s[0].save_to_file(out).unwrap();
     } else {
         eprintln!("Parsing error");
