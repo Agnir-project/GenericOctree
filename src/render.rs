@@ -142,7 +142,6 @@ where
     graph.add_edge(lbd, rbd, (1, 0, 0));
     graph.add_edge(lbd, rfd, (1, 0, 1));
     graph.add_edge(lbd, rbu, (1, 1, 0));
-    graph.add_edge(lbd, rfu, (1, 1, 1));
 
     // LFD
     graph.add_edge(lfd, lbd, (0, 0, -1));
@@ -150,7 +149,6 @@ where
     graph.add_edge(lfd, lfu, (0, 1, 0));
     graph.add_edge(lfd, rbd, (1, 0, -1));
     graph.add_edge(lfd, rfd, (1, 0, 0));
-    graph.add_edge(lfd, rbu, (1, 1, -1));
     graph.add_edge(lfd, rfu, (1, 1, 0));
 
     // LBU
@@ -158,7 +156,6 @@ where
     graph.add_edge(lbu, lfd, (0, -1, 1));
     graph.add_edge(lbu, lfu, (0, 0, 1));
     graph.add_edge(lbu, rbd, (1, -1, 0));
-    graph.add_edge(lbu, rfd, (1, -1, 1));
     graph.add_edge(lbu, rbu, (1, 0, 0));
     graph.add_edge(lbu, rfu, (1, 0, 1));
 
@@ -166,7 +163,6 @@ where
     graph.add_edge(lfu, lbd, (0, -1, -1));
     graph.add_edge(lfu, lfd, (0, -1, 0));
     graph.add_edge(lfu, lbu, (0, 0, -1));
-    graph.add_edge(lfu, rbd, (1, -1, -1));
     graph.add_edge(lfu, rfd, (1, -1, 0));
     graph.add_edge(lfu, rbu, (1, 0, -1));
     graph.add_edge(lfu, rfu, (1, 0, 0));
@@ -175,7 +171,6 @@ where
     graph.add_edge(rbd, lbd, (-1, 0, 0));
     graph.add_edge(rbd, lfd, (-1, 0, 1));
     graph.add_edge(rbd, lbu, (-1, 1, 0));
-    graph.add_edge(rbd, lfu, (-1, 1, 1));
     graph.add_edge(rbd, rfd, (0, 0, 1));
     graph.add_edge(rbd, rbu, (0, 1, 0));
     graph.add_edge(rbd, rfu, (0, 1, 1));
@@ -183,7 +178,6 @@ where
     // RFD
     graph.add_edge(rfd, lbd, (-1, 0, -1));
     graph.add_edge(rfd, lfd, (-1, 0, 0));
-    graph.add_edge(rfd, lbu, (-1, 1, -1));
     graph.add_edge(rfd, lfu, (-1, 1, 0));
     graph.add_edge(rfd, rbd, (0, 0, -1));
     graph.add_edge(rfd, rbu, (0, 1, -1));
@@ -191,7 +185,6 @@ where
 
     // RBU
     graph.add_edge(rbu, lbd, (-1, -1, 0));
-    graph.add_edge(rbu, lfd, (-1, -1, 1));
     graph.add_edge(rbu, lbu, (-1, 0, 0));
     graph.add_edge(rbu, lfu, (-1, 0, 1));
     graph.add_edge(rbu, rbd, (0, -1, 0));
@@ -199,7 +192,6 @@ where
     graph.add_edge(rbu, rfu, (0, 0, 1));
 
     // RFU
-    graph.add_edge(rfu, lbd, (-1, -1, -1));
     graph.add_edge(rfu, lfd, (-1, -1, 0));
     graph.add_edge(rfu, lbu, (-1, 0, -1));
     graph.add_edge(rfu, lfu, (-1, 0, 0));
