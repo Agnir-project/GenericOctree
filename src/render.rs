@@ -62,7 +62,7 @@ where
 {
     let mut graph = DiGraphMap::new();
     let center = get_center(*loc_code);
-    let offset = (2 as u32).pow(get_level_from_loc_code(*loc_code));
+    let offset = (2 as u32).pow(32 - get_level_from_loc_code(*loc_code));
     let color = [data.a, data.rgb().b, data.rgb().g, 255];
     let lbd = Vertex {
         position: VertexPosition {
@@ -227,7 +227,7 @@ where
     if loc_code == L::from(1u8) {
         return ((2 as u32).pow(31), (2 as u32).pow(31), (2 as u32).pow(31));
     }
-    let offset = ((2 as u32).pow(get_level_from_loc_code(loc_code)));
+    let offset = ((2 as u32).pow(32 - get_level_from_loc_code(loc_code)));
     let mask = L::from(u64::max_value() ^ 7u64);
     let center = get_center(loc_code >> L::from(3u8));
     let value = (loc_code ^ mask) & !mask;
@@ -297,15 +297,15 @@ where
                     (node.color[2] as f32 / 256f32) as f32,
                     (node.color[3] as f32 / 256f32) as f32,
                 ];
+                let position = Position {
+                    x: ((node.position.x as f64 / (2u64.pow(32) as f64)) as f32),
+                    y: ((node.position.y as f64 / (2u64.pow(32) as f64)) as f32),
+                    z: ((node.position.z as f64 / (2u64.pow(32) as f64)) as f32),
+                };
                 PosColorNorm {
                     normal: [normal.0, normal.1, normal.2].into(),
                     color: color.into(),
-                    position: Position {
-                        x: ((node.position.x as f64 / (2u64.pow(32) as f64)) as f32),
-                        y: ((node.position.y as f64 / (2u64.pow(32) as f64)) as f32),
-                        z: ((node.position.z as f64 / (2u64.pow(32) as f64)) as f32),
-                    }
-                    .into(),
+                    position: position.into(),
                 }
             },
             |_, edge| (),
@@ -356,6 +356,7 @@ where
             .into_iter()
             .map(|node| node.weight)
             .collect::<Vec<PosColorNorm>>();
+        
         Model { vertices, indices }
     }
 }
