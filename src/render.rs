@@ -308,7 +308,7 @@ where
                 })
                 .flatten()
                 .collect();
-            let triangles: HashSet<Triangle> = lines
+            let triangles: Vec<Triangle> = lines
                 .into_iter()
                 .filter(|line| {
                     verticesGraph
