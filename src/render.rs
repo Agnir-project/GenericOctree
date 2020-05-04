@@ -4,14 +4,16 @@ use genmesh::Position;
 use petgraph::{
     graph::EdgeReference,
     graphmap::{DiGraphMap, GraphMap},
+    prelude::DiGraph,
     stable_graph::NodeIndex,
 };
 use rendy::mesh::PosColorNorm;
 
 use std::{
+    collections::HashSet,
     fmt::Debug,
-    hash::{Hasher, Hash},
-    ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr}, collections::HashSet,
+    hash::{Hash, Hasher},
+    ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr},
 };
 
 #[derive(PartialOrd, PartialEq, Eq, Clone, Copy, Ord, Hash, Debug)]
@@ -26,10 +28,10 @@ pub struct Model {
     pub indices: Vec<u32>,
 }
 
-#[derive(PartialOrd, PartialEq, Eq, Clone, Copy, Ord, Hash, Debug)]
-struct Vertex {
-    pub position: VertexPosition,
+#[derive(PartialEq, Eq, Clone, Debug)]
+struct ColoredTriangle {
     pub color: [u8; 4],
+    pub vertices: [VertexPosition; 3],
 }
 
 fn normalize(vector: (i32, i32, i32)) -> (f32, f32, f32) {
@@ -45,7 +47,43 @@ fn invert(vector: (i32, i32, i32)) -> (i32, i32, i32) {
     (-vector.0, -vector.1, -vector.2)
 }
 
-fn get_vertices<L>(loc_code: &L, data: color::Rgba<u8>) -> DiGraphMap<Vertex, (i32, i32, i32)>
+fn get_spins(center: (u32, u32, u32), offset: u32) -> [u32; 6] {
+    [
+        center.0 - offset,
+        center.0 + offset,
+        center.1 - offset,
+        center.1 + offset,
+        center.2 - offset,
+        center.2 + offset,
+    ]
+}
+
+fn get_angles(center: (u32, u32, u32), offset: u32) -> [VertexPosition; 8] {
+    let [l, r, d, u, b, f] = get_spins(center, offset);
+    let lbd = VertexPosition { x: l, y: d, z: b };
+    let lfd = VertexPosition { x: l, y: d, z: f };
+    let lbu = VertexPosition { x: l, y: u, z: b };
+    let lfu = VertexPosition { x: l, y: u, z: f };
+    let rbd = VertexPosition { x: r, y: d, z: b };
+    let rfd = VertexPosition { x: r, y: d, z: f };
+    let rbu = VertexPosition { x: r, y: u, z: b };
+    let rfu = VertexPosition { x: r, y: u, z: f };
+    [lbd, lfd, lbu, lfu, rbd, rfd, rbu, rfu]
+}
+
+type MeshGraph = DiGraphMap<VertexPosition, (i32, i32, i32)>;
+type ColoredTriangles = Vec<ColoredTriangle>;
+
+#[derive(Eq, PartialEq, Debug, Clone, Hash)]
+struct Vertex {
+    pub position: [u32; 3],
+    pub color: [u8; 4],
+    pub normal: [i32; 3]
+}
+
+fn get_vertices<L>(
+    node: OctreeNode<L, color::Rgba<u8>>,
+) -> OctreeNode<L, (MeshGraph, ColoredTriangles)>
 where
     L: Eq
         + Debug
@@ -60,81 +98,66 @@ where
         + BitXor<Output = L>
         + Not<Output = L>,
 {
+    let loc_code = node.loc_code;
+    let data = node.data;
     let mut graph = DiGraphMap::new();
-    let center = get_center(*loc_code);
-    let offset = (2 as u32).pow(32 - get_level_from_loc_code(*loc_code));
-    let color = [data.a, data.rgb().b, data.rgb().g, 255];
-    let lbd = Vertex {
-        position: VertexPosition {
-            x: (center.0 - offset),
-            y: (center.1 - offset),
-            z: (center.2 - offset),
-        },
-        color,
-    };
+    let center = get_center(loc_code);
+    let offset = (2 as u32).pow(32 - get_level_from_loc_code(loc_code));
+    let color = [data.rgb().r, data.rgb().g, data.rgb().b, data.a];
 
-    let lfd = Vertex {
-        position: VertexPosition {
-            x: (center.0 - offset),
-            y: (center.1 - offset),
-            z: (center.2 + offset),
-        },
-        color,
-    };
+    let [lbd, lfd, lbu, lfu, rbd, rfd, rbu, rfu] = get_angles(center, offset);
 
-    let lbu = Vertex {
-        position: VertexPosition {
-            x: (center.0 - offset),
-            y: (center.1 + offset),
-            z: (center.2 - offset),
+    let triangles: ColoredTriangles = vec![
+        ColoredTriangle {
+            color,
+            vertices: [lbd, rfd, rbd],
         },
-        color,
-    };
+        ColoredTriangle {
+            color,
+            vertices: [lbd, rfd, lfd],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lfd, rfu, rfd],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lfd, rfu, lfu],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lfu, rbu, rfu],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lfu, rbu, lbu],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lbd, lfu, lfd],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [lbd, lfu, lbu],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [rbd, lbu, rbu],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [rbd, lbu, lbd],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [rfd, rbu, rbd],
+        },
+        ColoredTriangle {
+            color,
+            vertices: [rfd, rbu, rfu],
+        },
+    ];
 
-    let lfu = Vertex {
-        position: VertexPosition {
-            x: (center.0 - offset),
-            y: (center.1 + offset),
-            z: (center.2 + offset),
-        },
-        color,
-    };
-
-    let rbd = Vertex {
-        position: VertexPosition {
-            x: (center.0 + offset),
-            y: (center.1 - offset),
-            z: (center.2 - offset),
-        },
-        color,
-    };
-
-    let rfd = Vertex {
-        position: VertexPosition {
-            x: (center.0 + offset),
-            y: (center.1 - offset),
-            z: (center.2 + offset),
-        },
-        color,
-    };
-
-    let rbu = Vertex {
-        position: VertexPosition {
-            x: (center.0 + offset),
-            y: (center.1 + offset),
-            z: (center.2 - offset),
-        },
-        color,
-    };
-
-    let rfu = Vertex {
-        position: VertexPosition {
-            x: (center.0 + offset),
-            y: (center.1 + offset),
-            z: (center.2 + offset),
-        },
-        color,
-    };
     // LBD
     graph.add_edge(lbd, lfd, (0, 0, 1));
     graph.add_edge(lbd, lbu, (0, 1, 0));
@@ -186,7 +209,7 @@ where
     graph.add_edge(rfu, rbd, (0, -1, -1));
     graph.add_edge(rfu, rfd, (0, -1, 0));
     graph.add_edge(rfu, rbu, (0, 0, -1));
-    graph
+    OctreeNode::new((graph, triangles), loc_code)
 }
 
 fn get_center<L>(loc_code: L) -> (u32, u32, u32)
@@ -230,7 +253,7 @@ where
     }
 }
 
-impl<L> From<&Octree<L, u32>> for Model
+impl<L> From<Octree<L, color::Rgba<u8>>> for Model
 where
     L: Eq
         + Debug
@@ -247,149 +270,55 @@ where
         + Not<Output = L>
         + PartialEq,
 {
-    fn from(tree: &Octree<L, u32>) -> Self {
-        let verticesGraph = tree
-            .content
-            .iter()
-            .map(|item: (&L, &OctreeNode<L, u32>)| {
-                get_vertices(item.0, color::Rgba::from_hex(item.1.data))
-            })
-            .fold(DiGraphMap::new(), |mut acc, val| {
-                val.all_edges().into_iter().for_each(|edge| {
-                    acc.add_edge(edge.0, edge.1, *edge.2);
+    fn from(tree: Octree<L, color::Rgba<u8>>) -> Self {
+        let tree: Octree<L, (MeshGraph, ColoredTriangles)> = tree.transform_nodes_fn(get_vertices);
+        let (verticesGraph, triangles) =
+            tree.content
+                .into_iter()
+                .fold((DiGraphMap::new(), vec![]), |mut acc, val| {
+                    acc.1.extend(val.1.data.1.into_iter());
+                    val.1.data.0.all_edges().into_iter().for_each(|edge| {
+                        acc.0.add_edge(edge.0, edge.1, *edge.2);
+                    });
+                    acc
                 });
-                acc
-            })
-            .into_graph();
-        let mut verticesGraph = verticesGraph.map(
-            |idx: NodeIndex<u32>, node| {
-                let anti_normal = verticesGraph.edges(idx).fold((0, 0, 0), |acc, edge| {
-                    (
-                        acc.0 + edge.weight().0,
-                        acc.1 + edge.weight().1,
-                        acc.2 + edge.weight().2,
-                    )
+        let vertices = triangles.into_iter().map(|triangle| {
+            triangle.vertices.into_iter().map(|position| {
+                let anti_normal = verticesGraph.edges(*position).fold((0, 0, 0), |acc, edge| {
+                    (acc.0 + (edge.2).0, acc.1 + (edge.2).1, acc.2 + (edge.2).2)
                 });
-                let normal = normalize(invert(anti_normal));
-                let color = [
-                    (node.color[0] as f32 / 256f32) as f32,
-                    (node.color[1] as f32 / 256f32) as f32,
-                    (node.color[2] as f32 / 256f32) as f32,
-                    (node.color[3] as f32 / 256f32) as f32,
-                ];
-                let position = Position {
-                    x: ((node.position.x as f64 / (2u64.pow(32) as f64)) as f32),
-                    y: ((node.position.y as f64 / (2u64.pow(32) as f64)) as f32),
-                    z: ((node.position.z as f64 / (2u64.pow(32) as f64)) as f32),
-                };
-                PosColorNorm {
-                    normal: [normal.0, normal.1, normal.2].into(),
-                    color: color.into(),
-                    position: position.into(),
+                let normal = invert(anti_normal);
+                Vertex {
+                    position: [position.x, position.y, position.z],
+                    normal: [normal.0, normal.1, normal.2],
+                    color: triangle.color
                 }
-            },
-            |_, edge| (),
-        );
-        let mut indices = vec![];
-        let node_indices = verticesGraph
-            .node_indices()
-            .collect::<Vec<NodeIndex<u32>>>();
+            }).collect::<Vec<Vertex>>()
+        }).flatten().collect::<Vec<Vertex>>();
 
-        for index in node_indices {
-            let edges: Vec<NodeIndex> = verticesGraph.neighbors(index).collect();
-            let lines: Vec<Line> = edges
-                .into_iter()
-                .map(|idx| {
-                    verticesGraph
-                        .neighbors(idx)
-                        .filter(|new_idx| *new_idx != index)
-                        .map(|new_idx| Line(idx, new_idx))
-                        .collect::<Vec<Line>>()
-                })
-                .flatten()
-                .collect();
-            let triangles: Vec<Triangle> = lines
-                .into_iter()
-                .filter(|line| {
-                    verticesGraph
-                        .neighbors(line.1)
-                        .find(|new_idx| *new_idx == index)
-                        .is_some()
-                })
-                .map(|line| Triangle(line.0, line.1, index))
-                .collect();
-            triangles.into_iter().for_each(|triangle| {
-                indices.push((triangle.0).index() as u32);
-                indices.push((triangle.1).index() as u32);
-                indices.push((triangle.2).index() as u32);
-                match verticesGraph.find_edge(triangle.0, triangle.1) {
-                    Some(edge) => verticesGraph.remove_edge(edge),
-                    None => None,
-                };
-            });
+        let indices = (0u32..vertices.len() as u32);
+
+        let vertices = vertices.into_iter().map(|vertex: Vertex| {
+            let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
+            PosColorNorm {
+                position: Position {
+                    x: ((vertex.position[0] as f64 / (2u64.pow(32) as f64)) as f32),
+                    y: ((vertex.position[1] as f64 / (2u64.pow(32) as f64)) as f32),
+                    z: ((vertex.position[2] as f64 / (2u64.pow(32) as f64)) as f32),
+                }.into(),
+                normal: [normal.0, normal.1, normal.2].into(),
+                color: [
+                    (vertex.color[0] as f32 / 256f32) as f32,
+                    (vertex.color[1] as f32 / 256f32) as f32,
+                    (vertex.color[2] as f32 / 256f32) as f32,
+                    (vertex.color[3] as f32 / 256f32) as f32,
+                ].into()
+            }
+        }).collect::<Vec<PosColorNorm>>();
+        
+        Model {
+            vertices,
+            indices: indices.collect::<Vec<u32>>(),
         }
-
-        let vertices = verticesGraph
-            .clone()
-            .into_nodes_edges()
-            .0
-            .into_iter()
-            .map(|node| node.weight)
-            .collect::<Vec<PosColorNorm>>();
-        
-        Model { vertices, indices }
     }
-}
-
-#[derive(Debug)]
-struct Line(NodeIndex, NodeIndex);
-
-#[derive(Debug, Eq)]
-struct Triangle(NodeIndex, NodeIndex, NodeIndex);
-
-impl Hash for Triangle {
-
-    fn hash<S: Hasher>(&self, state: &mut S) {
-        let max = std::cmp::max(std::cmp::max(self.0, self.1), self.2);
-        let min = std::cmp::min(std::cmp::min(self.0, self.1), self.2);
-        let medium = if self.0 != max && self.0 != min {
-            self.0
-        } else if self.1 != max && self.1 != min {
-            self.1
-        } else {
-            self.2
-        };
-        max.hash(state);
-        medium.hash(state);
-        min.hash(state);
-    }
-
-}
-
-impl PartialEq for Triangle {
-
-    fn eq(&self, other: &Self) -> bool {
-        let max = std::cmp::max(std::cmp::max(self.0, self.1), self.2);
-        let min = std::cmp::min(std::cmp::min(self.0, self.1), self.2);
-        let medium = if self.0 != max && self.0 != min {
-            self.0
-        } else if self.1 != max && self.1 != min {
-            self.1
-        } else {
-            self.2
-        };
-
-        let other_max = std::cmp::max(std::cmp::max(other.0, other.1), other.2);
-        let other_min = std::cmp::min(std::cmp::min(other.0, other.1), other.2);
-        let other_medium = if other.0 != max && other.0 != min {
-            other.0
-        } else if other.1 != max && other.1 != min {
-            other.1
-        } else {
-            other.2
-        };
-        
-        max == other_max && min == other_min && medium == other_medium
-    }
-
 }

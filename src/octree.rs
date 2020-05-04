@@ -76,6 +76,16 @@ where
 
 impl<L, D> Octree<L, D>
 where
+    L: Eq + Hash,
+{
+    /// Get the size of an octree
+    pub fn size(&self) -> usize {
+        self.content.len()
+    }
+}
+
+impl<L, D> Octree<L, D>
+where
     L: Eq
         + Ord
         + Hash
@@ -98,11 +108,6 @@ where
     pub fn with_capacity(max_depth: u32, size: usize) -> Self {
         let content = HashMap::with_capacity(size);
         Self { content, max_depth }
-    }
-
-    /// Get the size of an octree
-    pub fn size(&self) -> usize {
-        self.content.len()
     }
 
     pub fn depth(&self) -> u32 {
@@ -203,6 +208,21 @@ where
                 .content
                 .into_iter()
                 .map(|(loc_code, data)| (loc_code, data.transform_fn(&function)))
+                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+            max_depth: self.max_depth,
+        }
+    }
+
+    /// tree.transform_fn(Rgb::from_hex);
+    pub fn transform_nodes_fn<U, F: Fn(OctreeNode<L, D>) -> OctreeNode<L, U>>(
+        self,
+        function: F,
+    ) -> Octree<L, U> {
+        Octree {
+            content: self
+                .content
+                .into_iter()
+                .map(|(loc_code, data)| (loc_code, function(data)))
                 .collect::<HashMap<L, OctreeNode<L, U>>>(),
             max_depth: self.max_depth,
         }
