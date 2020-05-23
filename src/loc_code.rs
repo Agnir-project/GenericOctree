@@ -94,7 +94,7 @@ macro_rules! impl_loc_code_num {
                 level as u32
             }
 
-            fn get_offset(mut self) -> u32 {
+            fn get_offset(self) -> u32 {
                 2u32.pow(32 - self.get_level())
             }
 
