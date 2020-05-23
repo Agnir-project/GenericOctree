@@ -32,7 +32,7 @@ pub enum ErrorKind {
 #[derive(Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Octree<L: Eq + Hash, D> {
-    pub content: HashMap<L, OctreeNode<L, D>>,
+    pub content: HashMap<L, OctreeNode<D>>,
     max_depth: u32,
 }
 
@@ -116,31 +116,18 @@ where
     }
 
     /// Return a tree node a node.
-    pub fn lookup(&self, loc_code: &L) -> Option<&OctreeNode<L, D>> {
+    pub fn lookup(&self, loc_code: &L) -> Option<&OctreeNode<D>> {
         self.content.get(loc_code)
     }
 
     /// Insert a tree node.
-    pub fn insert(&mut self, node: OctreeNode<L, D>) -> L {
-        let location = node.loc_code;
+    pub fn insert(&mut self, location: L, node: OctreeNode<D>) -> L {
         self.content.insert(location, node);
         location
     }
 
     pub fn remove_node(&mut self, loc_code: &L) {
         self.content.remove(loc_code);
-    }
-
-    /// Get a mutable root node.
-    pub fn get_mut_root(&mut self, node: &OctreeNode<L, D>) -> Option<&mut OctreeNode<L, D>> {
-        let new_loc_code = node.loc_code >> L::from(3);
-        self.content.get_mut(&new_loc_code)
-    }
-
-    /// Get a immutable root node.
-    pub fn get_root(&self, node: &OctreeNode<L, D>) -> Option<&OctreeNode<L, D>> {
-        let new_loc_code = node.loc_code >> L::from(3);
-        self.content.get(&new_loc_code)
     }
 
     /// Merge an AABB into the tree
@@ -182,7 +169,7 @@ where
                 (0_u8..8_u8)
                     .map(|number| (code << L::from(3)) | L::from(number))
                     .for_each(|code| self.remove_node(&code));
-                self.insert(OctreeNode::new(elem, code));
+                self.insert(code, OctreeNode::new(elem));
                 Some(code >> L::from(3))
             }
         }
@@ -196,7 +183,7 @@ where
                 .content
                 .into_iter()
                 .map(|(loc_code, data)| (loc_code, data.transform::<U>()))
-                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+                .collect::<HashMap<L, OctreeNode<U>>>(),
             max_depth: self.max_depth,
         }
     }
@@ -208,13 +195,13 @@ where
                 .content
                 .into_iter()
                 .map(|(loc_code, data)| (loc_code, data.transform_fn(&function)))
-                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+                .collect::<HashMap<L, OctreeNode<U>>>(),
             max_depth: self.max_depth,
         }
     }
 
     /// tree.transform_fn(Rgb::from_hex);
-    pub fn transform_nodes_fn<U, F: Fn(OctreeNode<L, D>) -> OctreeNode<L, U>>(
+    pub fn transform_nodes_fn<U, F: Fn(L, OctreeNode<D>) -> OctreeNode<U>>(
         self,
         function: F,
     ) -> Octree<L, U> {
@@ -222,8 +209,8 @@ where
             content: self
                 .content
                 .into_iter()
-                .map(|(loc_code, data)| (loc_code, function(data)))
-                .collect::<HashMap<L, OctreeNode<L, U>>>(),
+                .map(|(loc_code, data)| (loc_code, function(loc_code, data)))
+                .collect::<HashMap<L, OctreeNode<U>>>(),
             max_depth: self.max_depth,
         }
     }
@@ -248,13 +235,14 @@ where
 
         let mut codes: Vec<L> = fitting
             .into_iter()
-            .map(|elem| {
-                OctreeNode::new(
-                    data,
+            .map(|elem| 
+                self.insert(
                     (loc_code << L::from(3)) | (elem.orientation as u8).into(),
+                    OctreeNode::new(
+                        data
+                    )
                 )
-            })
-            .map(|elem| self.insert(elem))
+            )
             .map(|loc_code| loc_code >> L::from(3))
             .collect();
 

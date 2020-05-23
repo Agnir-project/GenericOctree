@@ -6,33 +6,30 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct OctreeNode<L, D> {
-    pub loc_code: L,
+pub struct OctreeNode<D> {
     pub data: D,
 }
 
-impl<L, D> OctreeNode<L, D> {
+impl<D> OctreeNode<D> {
     /// Create a new Node from it's Data and a LocCode.
-    pub(crate) fn new(data: D, loc_code: L) -> Self {
-        Self { data, loc_code }
+    pub(crate) fn new(data: D) -> Self {
+        Self { data }
     }
 
-    pub(crate) fn transform<U>(self) -> OctreeNode<L, U>
+    pub(crate) fn transform<U>(self) -> OctreeNode<U>
     where
         U: From<D>,
     {
         OctreeNode {
-            loc_code: self.loc_code,
             data: U::from(self.data),
         }
     }
 
-    pub(crate) fn transform_fn<U, F>(self, function: F) -> OctreeNode<L, U>
+    pub(crate) fn transform_fn<U, F>(self, function: F) -> OctreeNode<U>
     where
         F: Fn(D) -> U,
     {
         OctreeNode {
-            loc_code: self.loc_code,
             data: function(self.data),
         }
     }

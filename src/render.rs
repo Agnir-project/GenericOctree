@@ -2,17 +2,13 @@ use crate::node::OctreeNode;
 use crate::{aabb::get_level_from_loc_code, Octree};
 use genmesh::Position;
 use petgraph::{
-    graph::EdgeReference,
-    graphmap::{DiGraphMap, GraphMap},
-    prelude::DiGraph,
-    stable_graph::NodeIndex,
+    graphmap::{DiGraphMap},
 };
 use rendy::mesh::PosColorNorm;
 
 use std::{
-    collections::HashSet,
     fmt::Debug,
-    hash::{Hash, Hasher},
+    hash::{Hash},
     ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr},
 };
 
@@ -82,8 +78,9 @@ struct Vertex {
 }
 
 fn get_vertices<L>(
-    node: OctreeNode<L, color::Rgba<u8>>,
-) -> OctreeNode<L, (MeshGraph, ColoredTriangles)>
+    loc_code: L,
+    node: OctreeNode<color::Rgba<u8>>,
+) -> OctreeNode<(MeshGraph, ColoredTriangles)>
 where
     L: Eq
         + Debug
@@ -98,7 +95,6 @@ where
         + BitXor<Output = L>
         + Not<Output = L>,
 {
-    let loc_code = node.loc_code;
     let data = node.data;
     let mut graph = DiGraphMap::new();
     let center = get_center(loc_code);
@@ -209,7 +205,7 @@ where
     graph.add_edge(rfu, rbd, (0, -1, -1));
     graph.add_edge(rfu, rfd, (0, -1, 0));
     graph.add_edge(rfu, rbu, (0, 0, -1));
-    OctreeNode::new((graph, triangles), loc_code)
+    OctreeNode::new((graph, triangles))
 }
 
 fn get_center<L>(loc_code: L) -> (u32, u32, u32)
@@ -230,7 +226,7 @@ where
     if loc_code == L::from(1u8) {
         return ((2 as u32).pow(31), (2 as u32).pow(31), (2 as u32).pow(31));
     }
-    let offset = ((2 as u32).pow(32 - get_level_from_loc_code(loc_code)));
+    let offset = (2 as u32).pow(32 - get_level_from_loc_code(loc_code));
     let mask = L::from(u64::max_value() ^ 7u64);
     let center = get_center(loc_code >> L::from(3u8));
     let value = (loc_code ^ mask) & !mask;
@@ -272,7 +268,7 @@ where
 {
     fn from(tree: Octree<L, color::Rgba<u8>>) -> Self {
         let tree: Octree<L, (MeshGraph, ColoredTriangles)> = tree.transform_nodes_fn(get_vertices);
-        let (verticesGraph, triangles) =
+        let (vertices_graph, triangles) =
             tree.content
                 .into_iter()
                 .fold((DiGraphMap::new(), vec![]), |mut acc, val| {
@@ -283,8 +279,8 @@ where
                     acc
                 });
         let vertices = triangles.into_iter().map(|triangle| {
-            triangle.vertices.into_iter().map(|position| {
-                let anti_normal = verticesGraph.edges(*position).fold((0, 0, 0), |acc, edge| {
+            triangle.vertices.iter().map(|position| {
+                let anti_normal = vertices_graph.edges(*position).fold((0, 0, 0), |acc, edge| {
                     (acc.0 + (edge.2).0, acc.1 + (edge.2).1, acc.2 + (edge.2).2)
                 });
                 let normal = invert(anti_normal);
@@ -296,7 +292,7 @@ where
             }).collect::<Vec<Vertex>>()
         }).flatten().collect::<Vec<Vertex>>();
 
-        let indices = (0u32..vertices.len() as u32);
+        let indices = 0u32..vertices.len() as u32;
 
         let vertices = vertices.into_iter().map(|vertex: Vertex| {
             let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
