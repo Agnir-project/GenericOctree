@@ -1,5 +1,8 @@
-use std::{fmt::Debug, ops::{BitOr, Shl, Shr}};
 use crate::LocCode;
+use std::{
+    fmt::Debug,
+    ops::{BitOr, Shl, Shr},
+};
 
 // TODO: Make u8 not rely on enum position
 #[derive(Debug, Clone, Copy)]

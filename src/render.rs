@@ -1,14 +1,12 @@
 use crate::node::OctreeNode;
-use crate::{Octree, LocCode};
+use crate::{LocCode, Octree};
 use genmesh::Position;
-use petgraph::{
-    graphmap::{DiGraphMap},
-};
+use petgraph::graphmap::DiGraphMap;
 use rendy::mesh::PosColorNorm;
 
 use std::{
     fmt::Debug,
-    hash::{Hash},
+    hash::Hash,
     ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr},
 };
 
@@ -75,7 +73,7 @@ type ColoredTriangles = Vec<ColoredTriangle>;
 struct Vertex {
     pub position: [u32; 3],
     pub color: [u8; 4],
-    pub normal: [i32; 3]
+    pub normal: [i32; 3],
 }
 
 fn get_vertices<L>(
@@ -238,40 +236,56 @@ where
                     });
                     acc
                 });
-        let vertices = triangles.into_iter().map(|triangle| {
-            triangle.vertices.iter().map(|position| {
-                let anti_normal = vertices_graph.edges(*position).fold((0, 0, 0), |acc, edge| {
-                    (acc.0 + (edge.2).0, acc.1 + (edge.2).1, acc.2 + (edge.2).2)
-                });
-                let normal = invert(anti_normal);
-                Vertex {
-                    position: [position.x, position.y, position.z],
-                    normal: [normal.0, normal.1, normal.2],
-                    color: triangle.color
-                }
-            }).collect::<Vec<Vertex>>()
-        }).flatten().collect::<Vec<Vertex>>();
+        let vertices = triangles
+            .into_iter()
+            .map(|triangle| {
+                triangle
+                    .vertices
+                    .iter()
+                    .map(|position| {
+                        let anti_normal =
+                            vertices_graph
+                                .edges(*position)
+                                .fold((0, 0, 0), |acc, edge| {
+                                    (acc.0 + (edge.2).0, acc.1 + (edge.2).1, acc.2 + (edge.2).2)
+                                });
+                        let normal = invert(anti_normal);
+                        Vertex {
+                            position: [position.x, position.y, position.z],
+                            normal: [normal.0, normal.1, normal.2],
+                            color: triangle.color,
+                        }
+                    })
+                    .collect::<Vec<Vertex>>()
+            })
+            .flatten()
+            .collect::<Vec<Vertex>>();
 
         let indices = 0u32..vertices.len() as u32;
 
-        let vertices = vertices.into_iter().map(|vertex: Vertex| {
-            let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
-            PosColorNorm {
-                position: Position {
-                    x: ((vertex.position[0] as f64 / (2u64.pow(32) as f64)) as f32),
-                    y: ((vertex.position[1] as f64 / (2u64.pow(32) as f64)) as f32),
-                    z: ((vertex.position[2] as f64 / (2u64.pow(32) as f64)) as f32),
-                }.into(),
-                normal: [normal.0, normal.1, normal.2].into(),
-                color: [
-                    (vertex.color[0] as f32 / 256f32) as f32,
-                    (vertex.color[1] as f32 / 256f32) as f32,
-                    (vertex.color[2] as f32 / 256f32) as f32,
-                    (vertex.color[3] as f32 / 256f32) as f32,
-                ].into()
-            }
-        }).collect::<Vec<PosColorNorm>>();
-        
+        let vertices = vertices
+            .into_iter()
+            .map(|vertex: Vertex| {
+                let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
+                PosColorNorm {
+                    position: Position {
+                        x: ((vertex.position[0] as f64 / (2u64.pow(32) as f64)) as f32),
+                        y: ((vertex.position[1] as f64 / (2u64.pow(32) as f64)) as f32),
+                        z: ((vertex.position[2] as f64 / (2u64.pow(32) as f64)) as f32),
+                    }
+                    .into(),
+                    normal: [normal.0, normal.1, normal.2].into(),
+                    color: [
+                        (vertex.color[0] as f32 / 256f32) as f32,
+                        (vertex.color[1] as f32 / 256f32) as f32,
+                        (vertex.color[2] as f32 / 256f32) as f32,
+                        (vertex.color[3] as f32 / 256f32) as f32,
+                    ]
+                    .into(),
+                }
+            })
+            .collect::<Vec<PosColorNorm>>();
+
         Model {
             vertices,
             indices: indices.collect::<Vec<u32>>(),

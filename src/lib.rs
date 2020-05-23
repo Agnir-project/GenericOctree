@@ -2,10 +2,9 @@
 
 pub mod aabb;
 
+pub mod loc_code;
 pub mod node;
 pub mod octree;
-pub mod loc_code;
-
 
 #[cfg(feature = "render")]
 pub mod render;
@@ -14,5 +13,5 @@ pub mod render;
 pub mod dot_vox;
 
 pub use aabb::{Plane, AABB};
-pub use octree::Octree;
 pub use loc_code::LocCode;
+pub use octree::Octree;

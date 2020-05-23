@@ -1,11 +1,16 @@
-use std::{fmt::Debug, ops::{BitOr, BitXor, BitAnd, Shl, Shr}};
+use std::{
+    fmt::Debug,
+    ops::{BitAnd, BitOr, BitXor, Shl, Shr},
+};
 
 #[cfg(feature = "serialize")]
 use serde::{Deserialize, Serialize};
 
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Hash)]
-pub struct LocCode<T>(pub T) where T: Copy + Debug;
+pub struct LocCode<T>(pub T)
+where
+    T: Copy + Debug;
 
 impl<T> From<u8> for LocCode<T>
 where
@@ -79,7 +84,6 @@ where
     }
 }
 
-
 impl<T, D> BitAnd<D> for LocCode<T>
 where
     T: BitAnd<Output = T> + From<D> + Copy + Debug,
@@ -91,7 +95,6 @@ where
         LocCode(lhs & rhs.into())
     }
 }
-
 
 impl<T, D> BitOr<D> for LocCode<T>
 where
@@ -110,7 +113,7 @@ where
     T: Eq + From<u8> + Shr<Output = T> + Copy + Debug,
 {
     pub fn get_level(&self) -> u32 {
-        let mut temp = self.clone();
+        let mut temp = *self;
         let mut level = 1;
         while temp != 1.into() {
             temp = temp >> 3;
@@ -122,7 +125,15 @@ where
 
 impl<T> LocCode<T>
 where
-    T: Eq + From<u8> + From<u64> + Shr<Output = T> + Shl<Output = T> + BitXor<Output = T> + BitAnd<Output = T> + Copy + Debug,
+    T: Eq
+        + From<u8>
+        + From<u64>
+        + Shr<Output = T>
+        + Shl<Output = T>
+        + BitXor<Output = T>
+        + BitAnd<Output = T>
+        + Copy
+        + Debug,
 {
     pub fn get_center_u32(self) -> (u32, u32, u32) {
         if self == LocCode(1u8.into()) {

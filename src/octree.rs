@@ -4,7 +4,6 @@ use std::convert::TryInto;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::{BitAnd, BitOr, Shl, Shr};
-use std::path::Path;
 
 use crate::loc_code::LocCode;
 use crate::node::OctreeNode;
@@ -21,7 +20,7 @@ use flate2::Compression;
 use flate2::write::{ZlibDecoder, ZlibEncoder};
 
 #[cfg(feature = "serialize")]
-use std::io::prelude::*;
+use std::{io::prelude::*, path::Path};
 
 /// Octree's error kinds.
 pub enum ErrorKind {
@@ -143,7 +142,7 @@ where
 
     fn assemble(&mut self, code: LocCode<T>) -> Option<LocCode<T>> {
         let datas = (0_u8..8_u8)
-            .map(|number| (code << 3u8.into()) | number.into())
+            .map(|number| (code << 3) | number)
             .filter_map(|loc_code| self.lookup(loc_code))
             .map(|node| node.data)
             .collect::<Vec<D>>();
@@ -159,10 +158,10 @@ where
                 None
             } else {
                 (0_u8..8_u8)
-                    .map(|number| (code << 3.into()) | number.into())
+                    .map(|number| (code << 3) | number)
                     .for_each(|code| self.remove_node(code));
                 self.insert(code, OctreeNode::new(elem));
-                Some(code >> 3.into())
+                Some(code >> 3)
             }
         }
     }
@@ -229,18 +228,18 @@ where
             .into_iter()
             .map(|elem| {
                 self.insert(
-                    loc_code << 3u8.into() | (elem.orientation as u8).into(),
+                    loc_code << 3 | (elem.orientation as u8),
                     OctreeNode::new(data),
                 )
             })
-            .map(|loc_code| loc_code >> 3.into())
+            .map(|loc_code| loc_code >> 3)
             .collect();
 
         codes.extend(if depth != self.max_depth {
             subdivisables
                 .into_iter()
                 .map(|aabb| {
-                    let new_loc_code = (loc_code << 3.into()) | (aabb.orientation as u8).into();
+                    let new_loc_code = (loc_code << 3) | (aabb.orientation as u8);
                     let new_center = aabb.orientation.make_new_center(new_loc_code, center);
                     self.merge_inner(
                         aabb.with_orientation(Orientation::N),
