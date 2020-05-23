@@ -1,5 +1,5 @@
 use crate::node::OctreeNode;
-use crate::{aabb::get_level_from_loc_code, Octree};
+use crate::{Octree, LocCode};
 use genmesh::Position;
 use petgraph::{
     graphmap::{DiGraphMap},
@@ -54,6 +54,7 @@ fn get_spins(center: (u32, u32, u32), offset: u32) -> [u32; 6] {
     ]
 }
 
+#[allow(clippy::many_single_char_names)]
 fn get_angles(center: (u32, u32, u32), offset: u32) -> [VertexPosition; 8] {
     let [l, r, d, u, b, f] = get_spins(center, offset);
     let lbd = VertexPosition { x: l, y: d, z: b };
@@ -78,7 +79,7 @@ struct Vertex {
 }
 
 fn get_vertices<L>(
-    loc_code: L,
+    loc_code: LocCode<L>,
     node: OctreeNode<color::Rgba<u8>>,
 ) -> OctreeNode<(MeshGraph, ColoredTriangles)>
 where
@@ -97,8 +98,8 @@ where
 {
     let data = node.data;
     let mut graph = DiGraphMap::new();
-    let center = get_center(loc_code);
-    let offset = (2 as u32).pow(32 - get_level_from_loc_code(loc_code));
+    let center = loc_code.get_center_u32();
+    let offset = (2 as u32).pow(32 - loc_code.get_level());
     let color = [data.rgb().r, data.rgb().g, data.rgb().b, data.a];
 
     let [lbd, lfd, lbu, lfu, rbd, rfd, rbu, rfu] = get_angles(center, offset);
@@ -206,47 +207,6 @@ where
     graph.add_edge(rfu, rfd, (0, -1, 0));
     graph.add_edge(rfu, rbu, (0, 0, -1));
     OctreeNode::new((graph, triangles))
-}
-
-fn get_center<L>(loc_code: L) -> (u32, u32, u32)
-where
-    L: Eq
-        + Debug
-        + Hash
-        + From<u8>
-        + From<u64>
-        + Copy
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + BitXor<Output = L>
-        + Not<Output = L>,
-{
-    if loc_code == L::from(1u8) {
-        return ((2 as u32).pow(31), (2 as u32).pow(31), (2 as u32).pow(31));
-    }
-    let offset = (2 as u32).pow(32 - get_level_from_loc_code(loc_code));
-    let mask = L::from(u64::max_value() ^ 7u64);
-    let center = get_center(loc_code >> L::from(3u8));
-    let value = (loc_code ^ mask) & !mask;
-    if value == L::from(0u8) {
-        (center.0 - offset, center.1 + offset, center.2 - offset)
-    } else if value == L::from(1u8) {
-        (center.0 - offset, center.1 + offset, center.2 + offset)
-    } else if value == L::from(2u8) {
-        (center.0 - offset, center.1 - offset, center.2 + offset)
-    } else if value == L::from(3u8) {
-        (center.0 - offset, center.1 - offset, center.2 - offset)
-    } else if value == L::from(4u8) {
-        (center.0 + offset, center.1 - offset, center.2 - offset)
-    } else if value == L::from(5u8) {
-        (center.0 + offset, center.1 - offset, center.2 + offset)
-    } else if value == L::from(6u8) {
-        (center.0 + offset, center.1 + offset, center.2 + offset)
-    } else {
-        (center.0 + offset, center.1 + offset, center.2 - offset)
-    }
 }
 
 impl<L> From<Octree<L, color::Rgba<u8>>> for Model
