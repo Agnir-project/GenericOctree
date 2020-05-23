@@ -1,6 +1,6 @@
 [package]
 name = "generic-octree"
-version = "0.5.1"
+version = "0.5.2"
 authors = [
             "Thomas \"nwmqpa\" Nicollet <thomas.nicollet@epitech.eu>",
             "Alexandre \"Afourcat\" Fourcat <alexandre.fourcat@epitech.eu>",
@@ -11,6 +11,7 @@ license = "Apache-2.0"
 readme = "README.md"
 
 [dependencies]
+hashbrown = { version = "0.7.2", features = ["serde", "rayon"] }
 serde = { version = "1.0.*", features = ["derive"], optional = true }
 dot_vox = { version = "2.0.0", optional = true}
 bincode = { version = "1.2.1", optional = true}

@@ -1,7 +1,8 @@
-use std::collections::HashMap;
-use std::collections::HashSet;
+use hashbrown::HashMap;
+use hashbrown::HashSet;
 
 use crate::{LocCode, OctreeNode, Orientation, AABB};
+use rayon::prelude::*;
 
 #[cfg(feature = "serialize")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -17,7 +18,7 @@ use std::{io::prelude::*, path::Path};
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct Octree<L: LocCode, D> {
+pub struct Octree<L: LocCode, D: Send + Sync> {
     pub content: HashMap<L, OctreeNode<D>>,
     max_depth: u32,
 }
@@ -26,7 +27,7 @@ pub struct Octree<L: LocCode, D> {
 impl<L, D> Octree<L, D>
 where
     L: LocCode + Serialize + DeserializeOwned,
-    D: Serialize + DeserializeOwned,
+    D: Send + Sync + Serialize + DeserializeOwned,
 {
     /// Load from voxel octree from files
     /// TODO: Add better error management
@@ -63,6 +64,7 @@ where
 impl<'a, L, D> Octree<L, D>
 where
     L: LocCode,
+    D: Send + Sync,
 {
     /// Get the size of an octree
     pub fn size(&self) -> usize {
@@ -73,7 +75,7 @@ where
 impl<'a, T, D> Octree<T, D>
 where
     T: LocCode,
-    D: Copy + PartialEq,
+    D: Copy + PartialEq + Send + Sync,
 {
     /// Create a new Octree
     pub fn new(max_depth: u32) -> Self {
@@ -154,11 +156,11 @@ where
 
     /// Transform an Octree of data D into an Octree of data U, provided that
     /// U implement From<D>
-    pub fn transform<U: From<D>>(self) -> Octree<T, U> {
+    pub fn transform<U: From<D> + Send + Sync>(self) -> Octree<T, U> {
         Octree {
             content: self
                 .content
-                .into_iter()
+                .into_par_iter()
                 .map(|(loc_code, data)| (loc_code, data.transform::<U>()))
                 .collect::<HashMap<T, OctreeNode<U>>>(),
             max_depth: self.max_depth,
@@ -166,11 +168,11 @@ where
     }
 
     /// tree.transform_fn(Rgb::from_hex);
-    pub fn transform_fn<U, F: Fn(D) -> U>(self, function: F) -> Octree<T, U> {
+    pub fn transform_fn<U: Send + Sync, F: Fn(D) -> U + Sync>(self, function: F) -> Octree<T, U> {
         Octree {
             content: self
                 .content
-                .into_iter()
+                .into_par_iter()
                 .map(|(loc_code, data)| (loc_code, data.transform_fn(&function)))
                 .collect::<HashMap<T, OctreeNode<U>>>(),
             max_depth: self.max_depth,
@@ -178,14 +180,14 @@ where
     }
 
     /// tree.transform_fn(Rgb::from_hex);
-    pub fn transform_nodes_fn<U, F: Fn(T, OctreeNode<D>) -> OctreeNode<U>>(
+    pub fn transform_nodes_fn<U: Send + Sync, F: Fn(T, OctreeNode<D>) -> OctreeNode<U> + Sync>(
         self,
         function: F,
     ) -> Octree<T, U> {
         Octree {
             content: self
                 .content
-                .into_iter()
+                .into_par_iter()
                 .map(|(loc_code, data)| (loc_code, function(loc_code, data)))
                 .collect::<HashMap<T, OctreeNode<U>>>(),
             max_depth: self.max_depth,
@@ -248,6 +250,7 @@ where
 impl<'a, L, D> Octree<L, D>
 where
     L: LocCode,
+    D: Send + Sync,
 {
     #[cfg(feature = "vox")]
     pub fn from_dotvox<U: AsRef<str>>(

@@ -16,6 +16,7 @@ pub trait LocCode:
     + Debug
     + Hash
     + Send
+    + Sync
     + Shl<Output = Self>
     + Shr<Output = Self>
     + BitOr<Output = Self>
@@ -38,6 +39,7 @@ pub trait LocCode:
     fn three() -> Self;
 
     fn get_level(self) -> u32;
+    fn get_offset(self) -> u32;
 
     fn get_center_u32(self) -> (u32, u32, u32);
 }
@@ -90,6 +92,10 @@ macro_rules! impl_loc_code_num {
                     level += 1;
                 }
                 level as u32
+            }
+
+            fn get_offset(mut self) -> u32 {
+                2u32.pow(32 - self.get_level())
             }
 
             fn get_center_u32(self) -> (u32, u32, u32) {

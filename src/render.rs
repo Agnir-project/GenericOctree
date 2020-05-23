@@ -1,6 +1,7 @@
 use crate::node::OctreeNode;
 use crate::{LocCode, Octree};
 use petgraph::graphmap::DiGraphMap;
+use rayon::prelude::*;
 
 use std::{fmt::Debug, hash::Hash};
 
@@ -201,6 +202,9 @@ where
     L: LocCode,
 {
     fn from(tree: Octree<L, color::Rgba<u8>>) -> Self {
+        //let centers = gen_centers(&tree);
+        //println!("{:?}", centers);
+
         let tree: Octree<L, (MeshGraph, ColoredTriangles)> = tree.transform_nodes_fn(get_vertices);
         let (vertices_graph, triangles) =
             tree.content
@@ -213,7 +217,7 @@ where
                     acc
                 });
         let vertices = triangles
-            .into_iter()
+            .into_par_iter()
             .map(|triangle| {
                 triangle
                     .vertices
@@ -240,7 +244,7 @@ where
         let indices = 0u32..vertices.len() as u32;
 
         let vertices = vertices
-            .into_iter()
+            .into_par_iter()
             .map(|vertex: RawVertex| {
                 let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
                 Vertex {
