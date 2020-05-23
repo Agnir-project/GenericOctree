@@ -1,25 +1,25 @@
 use crate::node::OctreeNode;
 use crate::{LocCode, Octree};
-use genmesh::Position;
 use petgraph::graphmap::DiGraphMap;
-use rendy::mesh::PosColorNorm;
 
-use std::{
-    fmt::Debug,
-    hash::Hash,
-    ops::{BitAnd, BitOr, BitXor, Not, Shl, Shr},
-};
+use std::{fmt::Debug, hash::Hash};
+
+pub struct Model {
+    pub vertices: Vec<Vertex>,
+    pub indices: Vec<u32>,
+}
+
+pub struct Vertex {
+    pub position: [f32; 3],
+    pub color: [f32; 4],
+    pub normal: [f32; 3],
+}
 
 #[derive(PartialOrd, PartialEq, Eq, Clone, Copy, Ord, Hash, Debug)]
 struct VertexPosition {
     pub x: u32,
     pub y: u32,
     pub z: u32,
-}
-
-pub struct Model {
-    pub vertices: Vec<PosColorNorm>,
-    pub indices: Vec<u32>,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
@@ -70,29 +70,18 @@ type MeshGraph = DiGraphMap<VertexPosition, (i32, i32, i32)>;
 type ColoredTriangles = Vec<ColoredTriangle>;
 
 #[derive(Eq, PartialEq, Debug, Clone, Hash)]
-struct Vertex {
+struct RawVertex {
     pub position: [u32; 3],
     pub color: [u8; 4],
     pub normal: [i32; 3],
 }
 
 fn get_vertices<L>(
-    loc_code: LocCode<L>,
+    loc_code: L,
     node: OctreeNode<color::Rgba<u8>>,
 ) -> OctreeNode<(MeshGraph, ColoredTriangles)>
 where
-    L: Eq
-        + Debug
-        + Hash
-        + From<u8>
-        + From<u64>
-        + Copy
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + BitXor<Output = L>
-        + Not<Output = L>,
+    L: LocCode,
 {
     let data = node.data;
     let mut graph = DiGraphMap::new();
@@ -207,22 +196,9 @@ where
     OctreeNode::new((graph, triangles))
 }
 
-impl<L> From<Octree<L, color::Rgba<u8>>> for Model
+impl<'a, L> From<Octree<L, color::Rgba<u8>>> for Model
 where
-    L: Eq
-        + Debug
-        + Hash
-        + Ord
-        + From<u8>
-        + From<u64>
-        + Copy
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + BitXor<Output = L>
-        + Not<Output = L>
-        + PartialEq,
+    L: LocCode,
 {
     fn from(tree: Octree<L, color::Rgba<u8>>) -> Self {
         let tree: Octree<L, (MeshGraph, ColoredTriangles)> = tree.transform_nodes_fn(get_vertices);
@@ -250,41 +226,39 @@ where
                                     (acc.0 + (edge.2).0, acc.1 + (edge.2).1, acc.2 + (edge.2).2)
                                 });
                         let normal = invert(anti_normal);
-                        Vertex {
+                        RawVertex {
                             position: [position.x, position.y, position.z],
                             normal: [normal.0, normal.1, normal.2],
                             color: triangle.color,
                         }
                     })
-                    .collect::<Vec<Vertex>>()
+                    .collect::<Vec<RawVertex>>()
             })
             .flatten()
-            .collect::<Vec<Vertex>>();
+            .collect::<Vec<RawVertex>>();
 
         let indices = 0u32..vertices.len() as u32;
 
         let vertices = vertices
             .into_iter()
-            .map(|vertex: Vertex| {
+            .map(|vertex: RawVertex| {
                 let normal = normalize((vertex.normal[0], vertex.normal[1], vertex.normal[2]));
-                PosColorNorm {
-                    position: Position {
-                        x: ((vertex.position[0] as f64 / (2u64.pow(32) as f64)) as f32),
-                        y: ((vertex.position[1] as f64 / (2u64.pow(32) as f64)) as f32),
-                        z: ((vertex.position[2] as f64 / (2u64.pow(32) as f64)) as f32),
-                    }
-                    .into(),
+                Vertex {
+                    position: [
+                        ((vertex.position[0] as f64 / (2u64.pow(32) as f64)) as f32),
+                        ((vertex.position[1] as f64 / (2u64.pow(32) as f64)) as f32),
+                        ((vertex.position[2] as f64 / (2u64.pow(32) as f64)) as f32),
+                    ],
                     normal: [normal.0, normal.1, normal.2].into(),
                     color: [
                         (vertex.color[0] as f32 / 256f32) as f32,
                         (vertex.color[1] as f32 / 256f32) as f32,
                         (vertex.color[2] as f32 / 256f32) as f32,
                         (vertex.color[3] as f32 / 256f32) as f32,
-                    ]
-                    .into(),
+                    ],
                 }
             })
-            .collect::<Vec<PosColorNorm>>();
+            .collect::<Vec<Vertex>>();
 
         Model {
             vertices,

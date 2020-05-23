@@ -1,164 +1,124 @@
 use std::{
     fmt::Debug,
-    ops::{BitAnd, BitOr, BitXor, Shl, Shr},
+    hash::Hash,
+    ops::{BitOr, Shl, Shr},
 };
 
-#[cfg(feature = "serialize")]
-use serde::{Deserialize, Serialize};
+use crate::Orientation;
 
-#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Debug, Hash)]
-pub struct LocCode<T>(pub T)
-where
-    T: Copy + Debug;
-
-impl<T> From<u8> for LocCode<T>
-where
-    T: From<u8> + Copy + Debug,
+pub trait LocCode:
+    Copy
+    + Clone
+    + Ord
+    + PartialOrd
+    + Eq
+    + PartialEq
+    + Debug
+    + Hash
+    + Send
+    + Shl<Output = Self>
+    + Shr<Output = Self>
+    + BitOr<Output = Self>
+    + From<u8>
+    + BitOr<Orientation, Output = Self>
 {
-    fn from(val: u8) -> Self {
-        Self(val.into())
-    }
+    /// Useful for many puproses
+    fn zero() -> Self;
+
+    /// Useful to get root node
+    fn root() -> Self;
+
+    /// Useful for binary trees
+    fn one() -> Self;
+
+    /// Useful for quad-trees
+    fn two() -> Self;
+
+    // Useful for oct-trees
+    fn three() -> Self;
+
+    fn get_level(self) -> u32;
+
+    fn get_center_u32(self) -> (u32, u32, u32);
 }
 
-impl<T> From<u16> for LocCode<T>
-where
-    T: From<u16> + Copy + Debug,
-{
-    fn from(val: u16) -> Self {
-        Self(val.into())
-    }
-}
+macro_rules! impl_loc_code_num {
+    ($ty:ident) => {
+        impl BitOr<Orientation> for $ty {
+            type Output = Self;
 
-impl<T> From<u32> for LocCode<T>
-where
-    T: From<u32> + Copy + Debug,
-{
-    fn from(val: u32) -> Self {
-        Self(val.into())
-    }
-}
-
-impl<T> From<u64> for LocCode<T>
-where
-    T: From<u64> + Copy + Debug,
-{
-    fn from(val: u64) -> Self {
-        Self(val.into())
-    }
-}
-
-impl<T, D> Shl<D> for LocCode<T>
-where
-    T: Shl<Output = T> + From<D> + Copy + Debug,
-{
-    type Output = Self;
-
-    fn shl(self, rhs: D) -> Self::Output {
-        let LocCode(lhs) = self;
-        LocCode(lhs << rhs.into())
-    }
-}
-
-impl<T, D> Shr<D> for LocCode<T>
-where
-    T: Shr<Output = T> + From<D> + Copy + Debug,
-{
-    type Output = Self;
-
-    fn shr(self, rhs: D) -> Self::Output {
-        let LocCode(lhs) = self;
-        LocCode(lhs >> rhs.into())
-    }
-}
-
-impl<T, D> BitXor<D> for LocCode<T>
-where
-    T: BitXor<Output = T> + From<D> + Copy + Debug,
-{
-    type Output = Self;
-
-    fn bitxor(self, rhs: D) -> Self::Output {
-        let LocCode(lhs) = self;
-        LocCode(lhs ^ rhs.into())
-    }
-}
-
-impl<T, D> BitAnd<D> for LocCode<T>
-where
-    T: BitAnd<Output = T> + From<D> + Copy + Debug,
-{
-    type Output = Self;
-
-    fn bitand(self, rhs: D) -> Self::Output {
-        let LocCode(lhs) = self;
-        LocCode(lhs & rhs.into())
-    }
-}
-
-impl<T, D> BitOr<D> for LocCode<T>
-where
-    T: BitOr<Output = T> + From<D> + Copy + Debug,
-{
-    type Output = Self;
-
-    fn bitor(self, rhs: D) -> Self::Output {
-        let LocCode(lhs) = self;
-        LocCode(lhs | rhs.into())
-    }
-}
-
-impl<T> LocCode<T>
-where
-    T: Eq + From<u8> + Shr<Output = T> + Copy + Debug,
-{
-    pub fn get_level(&self) -> u32 {
-        let mut temp = *self;
-        let mut level = 1;
-        while temp != 1.into() {
-            temp = temp >> 3;
-            level += 1;
+            fn bitor(self, rhs: Orientation) -> Self {
+                match rhs {
+                    Orientation::LBU => self | 0,
+                    Orientation::LFU => self | 1,
+                    Orientation::LFD => self | 2,
+                    Orientation::LBD => self | 3,
+                    Orientation::RBD => self | 4,
+                    Orientation::RFD => self | 5,
+                    Orientation::RFU => self | 6,
+                    Orientation::RBU => self | 7,
+                    _ => self | 8,
+                }
+            }
         }
-        level
-    }
+
+        impl LocCode for $ty {
+            fn root() -> Self {
+                Self::one()
+            }
+
+            fn one() -> Self {
+                1 as Self
+            }
+
+            fn zero() -> Self {
+                1 as Self
+            }
+
+            fn two() -> Self {
+                2 as Self
+            }
+
+            fn three() -> Self {
+                3 as Self
+            }
+
+            fn get_level(mut self) -> u32 {
+                let mut level = 1;
+                while self != 1 {
+                    self >>= 3;
+                    level += 1;
+                }
+                level as u32
+            }
+
+            fn get_center_u32(self) -> (u32, u32, u32) {
+                if self == 1 {
+                    return (i32::MAX as u32, i32::MAX as u32, i32::MAX as u32);
+                }
+                let offset = 2u32.pow(32 - self.get_level());
+                let mask = Self::MAX ^ 7;
+                let center = (self >> 3).get_center_u32();
+                match (self ^ mask) & !mask {
+                    0 => (center.0 - offset, center.1 + offset, center.2 - offset),
+                    1 => (center.0 - offset, center.1 + offset, center.2 + offset),
+                    2 => (center.0 - offset, center.1 - offset, center.2 + offset),
+                    3 => (center.0 - offset, center.1 - offset, center.2 - offset),
+                    4 => (center.0 + offset, center.1 - offset, center.2 - offset),
+                    5 => (center.0 + offset, center.1 - offset, center.2 + offset),
+                    6 => (center.0 + offset, center.1 + offset, center.2 + offset),
+                    7 => (center.0 + offset, center.1 + offset, center.2 - offset),
+                    _ => (i32::MAX as u32, i32::MAX as u32, i32::MAX as u32),
+                }
+            }
+        }
+    };
 }
 
-impl<T> LocCode<T>
-where
-    T: Eq
-        + From<u8>
-        + From<u64>
-        + Shr<Output = T>
-        + Shl<Output = T>
-        + BitXor<Output = T>
-        + BitAnd<Output = T>
-        + Copy
-        + Debug,
-{
-    pub fn get_center_u32(self) -> (u32, u32, u32) {
-        if self == LocCode(1u8.into()) {
-            return ((2 as u32).pow(31), (2 as u32).pow(31), (2 as u32).pow(31));
-        }
-        let offset = (2 as u32).pow(32 - self.get_level());
-        let mask = u64::max_value() ^ 7u64;
-        let center = (self >> 3u8).get_center_u32();
-        let value = (self ^ mask) & !mask;
-        if value == 0u8.into() {
-            (center.0 - offset, center.1 + offset, center.2 - offset)
-        } else if value == 1u8.into() {
-            (center.0 - offset, center.1 + offset, center.2 + offset)
-        } else if value == 2u8.into() {
-            (center.0 - offset, center.1 - offset, center.2 + offset)
-        } else if value == 3u8.into() {
-            (center.0 - offset, center.1 - offset, center.2 - offset)
-        } else if value == 4u8.into() {
-            (center.0 + offset, center.1 - offset, center.2 - offset)
-        } else if value == 5u8.into() {
-            (center.0 + offset, center.1 - offset, center.2 + offset)
-        } else if value == 6u8.into() {
-            (center.0 + offset, center.1 + offset, center.2 + offset)
-        } else {
-            (center.0 + offset, center.1 + offset, center.2 - offset)
-        }
-    }
-}
+impl_loc_code_num!(u8);
+impl_loc_code_num!(i16);
+impl_loc_code_num!(u16);
+impl_loc_code_num!(i32);
+impl_loc_code_num!(u32);
+impl_loc_code_num!(i64);
+impl_loc_code_num!(u64);

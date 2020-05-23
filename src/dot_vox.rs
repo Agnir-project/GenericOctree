@@ -6,13 +6,9 @@
 //
 
 use crate::aabb::AABB;
-use crate::Octree;
+use crate::{LocCode, Octree};
 use dot_vox::{DotVoxData, Model, Voxel};
 use rayon::prelude::*;
-use std::convert::TryInto;
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::ops::{BitAnd, BitOr, Shl, Shr};
 
 #[derive(PartialEq)]
 pub enum ConversionType {
@@ -56,20 +52,7 @@ pub(crate) fn model_to_octree<L>(
     palette: &[u32],
 ) -> Octree<L, u32>
 where
-    L: Eq
-        + Ord
-        + Hash
-        + Copy
-        + Debug
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + From<u8>
-        + From<L>
-        + TryInto<u8>
-        + std::marker::Send
-        + std::marker::Sync,
+    L: LocCode,
 {
     let mut octree = Octree::new(max_depth);
     model
@@ -90,20 +73,7 @@ pub(crate) fn vox_to_octrees<L>(
     conversion_type: ConversionType,
 ) -> Vec<Octree<L, u32>>
 where
-    L: Eq
-        + Ord
-        + Hash
-        + Copy
-        + Debug
-        + Shr<Output = L>
-        + Shl<Output = L>
-        + BitOr<Output = L>
-        + BitAnd<Output = L>
-        + From<u8>
-        + From<L>
-        + TryInto<u8>
-        + std::marker::Send
-        + std::marker::Sync,
+    L: LocCode,
 {
     data.models
         .iter()
