@@ -5,6 +5,7 @@ use rayon::prelude::*;
 
 use std::{fmt::Debug, hash::Hash};
 
+
 pub struct Model {
     pub vertices: Vec<Vertex>,
     pub indices: Vec<u32>,

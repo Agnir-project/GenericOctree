@@ -5,6 +5,8 @@ use std::{
 };
 
 use crate::Orientation;
+use hashbrown::HashMap;
+use std::sync::Mutex;
 
 pub trait LocCode:
     Copy
@@ -21,6 +23,7 @@ pub trait LocCode:
     + Shr<Output = Self>
     + BitOr<Output = Self>
     + From<u8>
+    + Into<u64>
     + BitOr<Orientation, Output = Self>
 {
     /// Useful for many puproses
@@ -122,9 +125,6 @@ macro_rules! impl_loc_code_num {
 }
 
 impl_loc_code_num!(u8);
-impl_loc_code_num!(i16);
 impl_loc_code_num!(u16);
-impl_loc_code_num!(i32);
 impl_loc_code_num!(u32);
-impl_loc_code_num!(i64);
 impl_loc_code_num!(u64);
